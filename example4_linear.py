@@ -1,5 +1,5 @@
 # Code for Example 2 of our paper at https://arxiv.org/abs/2310.20310.
-# This code is for the Quadratic finite element spatial discretization of
+# This code is for the Linear finite element spatial discretization of
 # this problem with Backward Euler, Crank-Nicholson and implicit leapfrog
 # time discretizations.
 
@@ -26,7 +26,7 @@ warnings.filterwarnings("ignore")
 # Some common utility variables
 float_tol = 1e-12    # Tolerance for floating point comparisons
 sigma = 1
-epsilon = 2
+epsilon = 1
 mu = 1
 
 # Time Parameters
@@ -39,8 +39,8 @@ mesh_dir = "meshes/unit_cube/"
 mesh_no = 1
 
 # FE Space Choice
-fe_order = "Quadratic"
-p_string = "example2"
+fe_order = "Linear"
+p_string = "example4"
 
 # Computation Choices
 plot_solutions = True
@@ -87,26 +87,22 @@ def p_analytical(v, t):
     x = v[0]
     y = v[1]
     z = v[2]
-    return 0
+    return (np.cos(np.pi*x) + np.cos(np.pi*y)) * np.sin(np.pi*t)
 
 # Analytical E
 def E_analytical(v, t):
     x = v[0]
     y = v[1]
     z = v[2]
-    return np.array([np.sin(np.pi*y) * np.sin(np.pi*z) * np.cos(np.pi*t), 
-                     np.sin(np.pi*x) * np.sin(np.pi*z) * np.cos(np.pi*t),
-                     np.sin(np.pi*x) * np.sin(np.pi*y) * np.cos(np.pi*t)])
-
+    return np.array([np.sin(np.pi*(np.sqrt(2)*t - (x+y))) - np.sin(np.pi*x)*np.cos(np.pi*t), 
+                     -np.sin(np.pi*(np.sqrt(2)*t - (x+y))) - np.sin(np.pi*y)*np.cos(np.pi*t), 0]) 
 
 # Analytical H
 def H_analytical(v, t):
     x = v[0]
     y = v[1]
     z = v[2]
-    return np.array([np.sin(np.pi*x) * (np.cos(np.pi*z) - np.cos(np.pi*y)) * np.sin(np.pi*t),
-                     np.sin(np.pi*y) * (np.cos(np.pi*x) - np.cos(np.pi*z)) * np.sin(np.pi*t),
-                     np.sin(np.pi*z) * (np.cos(np.pi*y) - np.cos(np.pi*x)) * np.sin(np.pi*t)])
+    return np.array([0, 0, -np.sqrt(2)*np.sin(np.pi*(np.sqrt(2)*t - (x+y)))])
     
 # Analytical f_p
 def fp_analytical(v, t):
@@ -215,212 +211,94 @@ vol_std_tet = np.sum(qweights)
 def dl(vertices_Tet):
     return pydec.barycentric_gradients(vertices_Tet)
 
-# Lagrange Basis (order = 2) on a physical simplex
+# Lagrange Basis (order = 1) on a physical simplex
 def W0(ell_T):
-    return ell_T[0] * (2*ell_T[0] - 1)
+    return ell_T[0]
 def W1(ell_T):
-    return ell_T[1] * (2*ell_T[1] - 1)
+    return ell_T[1]
 def W2(ell_T):
-    return ell_T[2] * (2*ell_T[2] - 1)
+    return ell_T[2]
 def W3(ell_T):
-    return ell_T[3] * (2*ell_T[3] - 1)
-def W4(ell_T):
-    return 4 * ell_T[0] * ell_T[1]
-def W5(ell_T):
-    return 4 * ell_T[0] * ell_T[2]
-def W6(ell_T):
-    return 4 * ell_T[0] * ell_T[3]
-def W7(ell_T):
-    return 4 * ell_T[1] * ell_T[2]
-def W8(ell_T):
-    return 4 * ell_T[1] * ell_T[3]
-def W9(ell_T):
-    return 4 * ell_T[2] * ell_T[3]
+    return ell_T[3]
 
-# Gradient of Lagrange Basis (order = 2)
-def grad_W0(ell_T, dl_T):
-    return dl_T[0] * (4*ell_T[0] - 1)
-def grad_W1(ell_T, dl_T):
-    return dl_T[1] * (4*ell_T[1] - 1)
-def grad_W2(ell_T, dl_T):
-    return dl_T[2] * (4*ell_T[2] - 1)
-def grad_W3(ell_T, dl_T):
-    return dl_T[3] * (4*ell_T[3] - 1)
-def grad_W4(ell_T, dl_T):
-    return 4*(ell_T[1] * dl_T[0] + ell_T[0] * dl_T[1])
-def grad_W5(ell_T, dl_T):
-    return 4*(ell_T[2] * dl_T[0] + ell_T[0] * dl_T[2])
-def grad_W6(ell_T, dl_T):
-    return 4*(ell_T[3] * dl_T[0] + ell_T[0] * dl_T[3])
-def grad_W7(ell_T, dl_T):
-    return 4*(ell_T[2] * dl_T[1] + ell_T[1] * dl_T[2])
-def grad_W8(ell_T, dl_T):
-    return 4*(ell_T[3] * dl_T[1] + ell_T[1] * dl_T[3])
-def grad_W9(ell_T, dl_T):
-    return 4*(ell_T[3] * dl_T[2] + ell_T[2] * dl_T[3])
+# Gradient of Lagrange Basis (order = 1)
+def grad_W0(dl_T):
+    return dl_T[0]
+def grad_W1(dl_T):
+    return dl_T[1]
+def grad_W2(dl_T):
+    return dl_T[2]
+def grad_W3(dl_T):
+    return dl_T[3]
 
-# Edge Whitney basis (order = 2) on a physical simplex
-# Edges
-def E_W01_0(ell_Tet,dl_Tet):
-    return ell_Tet[0] * (ell_Tet[0]*dl_Tet[1]-ell_Tet[1]*dl_Tet[0])
-def E_W01_1(ell_Tet,dl_Tet):
-    return ell_Tet[1] * (ell_Tet[0]*dl_Tet[1]-ell_Tet[1]*dl_Tet[0])
-def E_W02_0(ell_Tet,dl_Tet):
-    return ell_Tet[0] * (ell_Tet[0]*dl_Tet[2]-ell_Tet[2]*dl_Tet[0])
-def E_W02_1(ell_Tet,dl_Tet):
-    return ell_Tet[2] * (ell_Tet[0]*dl_Tet[2]-ell_Tet[2]*dl_Tet[0])
-def E_W03_0(ell_Tet,dl_Tet):
-    return ell_Tet[0] * (ell_Tet[0]*dl_Tet[3]-ell_Tet[3]*dl_Tet[0])
-def E_W03_1(ell_Tet,dl_Tet):
-    return ell_Tet[3] * (ell_Tet[0]*dl_Tet[3]-ell_Tet[3]*dl_Tet[0])
-def E_W12_0(ell_Tet,dl_Tet):
-    return ell_Tet[1] * (ell_Tet[1]*dl_Tet[2]-ell_Tet[2]*dl_Tet[1])
-def E_W12_1(ell_Tet,dl_Tet):
-    return ell_Tet[2] * (ell_Tet[1]*dl_Tet[2]-ell_Tet[2]*dl_Tet[1])
-def E_W13_0(ell_Tet,dl_Tet):
-    return ell_Tet[1] * (ell_Tet[1]*dl_Tet[3]-ell_Tet[3]*dl_Tet[1])
-def E_W13_1(ell_Tet,dl_Tet):
-    return ell_Tet[3] * (ell_Tet[1]*dl_Tet[3]-ell_Tet[3]*dl_Tet[1])
-def E_W23_0(ell_Tet,dl_Tet):
-    return ell_Tet[2] * (ell_Tet[2]*dl_Tet[3]-ell_Tet[3]*dl_Tet[2])
-def E_W23_1(ell_Tet,dl_Tet):
-    return ell_Tet[3] * (ell_Tet[2]*dl_Tet[3]-ell_Tet[3]*dl_Tet[2])
+# Edge Whitney basis (order = 1) on a physical simplex
+def E_W01(ell_Tet,dl_Tet):
+    return(ell_Tet[0]*dl_Tet[1]-ell_Tet[1]*dl_Tet[0])
+def E_W02(ell_Tet,dl_Tet):
+    return(ell_Tet[0]*dl_Tet[2]-ell_Tet[2]*dl_Tet[0])
+def E_W03(ell_Tet,dl_Tet):
+    return(ell_Tet[0]*dl_Tet[3]-ell_Tet[3]*dl_Tet[0])
+def E_W12(ell_Tet,dl_Tet):
+    return(ell_Tet[1]*dl_Tet[2]-ell_Tet[2]*dl_Tet[1])
+def E_W13(ell_Tet,dl_Tet):
+    return(ell_Tet[1]*dl_Tet[3]-ell_Tet[3]*dl_Tet[1])
+def E_W23(ell_Tet,dl_Tet):
+    return(ell_Tet[2]*dl_Tet[3]-ell_Tet[3]*dl_Tet[2])
 
-# Triangles
-def E_W012_0(ell_Tet,dl_Tet):
-    return ell_Tet[2] * (ell_Tet[0]*dl_Tet[1]-ell_Tet[1]*dl_Tet[0])
-def E_W012_1(ell_Tet,dl_Tet):
-    return ell_Tet[1] * (ell_Tet[0]*dl_Tet[2]-ell_Tet[2]*dl_Tet[0])
-def E_W013_0(ell_Tet,dl_Tet):
-    return ell_Tet[3] * (ell_Tet[0]*dl_Tet[1]-ell_Tet[1]*dl_Tet[0])
-def E_W013_1(ell_Tet,dl_Tet):
-    return ell_Tet[1] * (ell_Tet[0]*dl_Tet[3]-ell_Tet[3]*dl_Tet[0])
-def E_W023_0(ell_Tet,dl_Tet):
-    return ell_Tet[3] * (ell_Tet[0]*dl_Tet[2]-ell_Tet[2]*dl_Tet[0])
-def E_W023_1(ell_Tet,dl_Tet):
-    return ell_Tet[2] * (ell_Tet[0]*dl_Tet[3]-ell_Tet[3]*dl_Tet[0])
-def E_W123_0(ell_Tet,dl_Tet):
-    return ell_Tet[3] * (ell_Tet[1]*dl_Tet[2]-ell_Tet[2]*dl_Tet[1])
-def E_W123_1(ell_Tet,dl_Tet):
-    return ell_Tet[2] * (ell_Tet[1]*dl_Tet[3]-ell_Tet[3]*dl_Tet[1])
+# Curl of Edge Whitney basis (order = 1)
+def curl_E_W01(dl_Tet):
+    return 2 * np.cross(dl_Tet[0],dl_Tet[1])
+def curl_E_W02(dl_Tet):
+    return 2 * np.cross(dl_Tet[0],dl_Tet[2])
+def curl_E_W03(dl_Tet):
+    return 2 * np.cross(dl_Tet[0],dl_Tet[3])
+def curl_E_W12(dl_Tet):
+    return 2 * np.cross(dl_Tet[1],dl_Tet[2])
+def curl_E_W13(dl_Tet):
+    return 2 * np.cross(dl_Tet[1],dl_Tet[3])
+def curl_E_W23(dl_Tet):
+    return 2 * np.cross(dl_Tet[2],dl_Tet[3])
 
-# General curl function for computing particular curls of Edge Whitney basis 
+# Face Whitney basis (order = 1) on physical simplex
+def F_W012(ell_Tet,dl_Tet):
+    return np.cross(ell_Tet[0]*dl_Tet[1],dl_Tet[2])-np.cross(ell_Tet[1]*dl_Tet[0],dl_Tet[2])+np.cross(ell_Tet[2]*dl_Tet[0],dl_Tet[1])
+def F_W013(ell_Tet,dl_Tet):
+    return np.cross(ell_Tet[0]*dl_Tet[1],dl_Tet[3])-np.cross(ell_Tet[1]*dl_Tet[0],dl_Tet[3])+np.cross(ell_Tet[3]*dl_Tet[0],dl_Tet[1])
+def F_W023(ell_Tet,dl_Tet):
+    return np.cross(ell_Tet[0]*dl_Tet[2],dl_Tet[3])-np.cross(ell_Tet[2]*dl_Tet[0],dl_Tet[3])+np.cross(ell_Tet[3]*dl_Tet[0],dl_Tet[2])
+def F_W123(ell_Tet,dl_Tet):
+    return np.cross(ell_Tet[1]*dl_Tet[2],dl_Tet[3])-np.cross(ell_Tet[2]*dl_Tet[1],dl_Tet[3])+np.cross(ell_Tet[3]*dl_Tet[1],dl_Tet[2])
+
+# General divergence function for computing particular divergences of Face Whitney basis 
 # on a physical simplex
-# Note: This function computes the curl of the following general form:
-#       Curl(ell_0**a * ell_1**b * ell_2**c * ell_3**d * Gradient[ell_Tet][t])
-# where a, b, c, d are nonnegative integers, and t belongs to {0, 1, 2, 3}.
-def curl_E_Wbasis(ell_Tet,dl_Tet,a,b,c,d,t):
-    return np.cross(((a*(ell_Tet[0]**(a-1))*(ell_Tet[1]**b)*(ell_Tet[2]**c)*(ell_Tet[3]**d)*dl_Tet[0]) + 
-                     (b*(ell_Tet[0]**a)*(ell_Tet[1]**(b-1))*(ell_Tet[2]**c)*(ell_Tet[3]**d)*dl_Tet[1]) + 
-                     (c*(ell_Tet[0]**a)*(ell_Tet[1]**b)*(ell_Tet[2]**(c-1))*(ell_Tet[3]**d)*dl_Tet[2]) + 
-                     (d*(ell_Tet[0]**a)*(ell_Tet[1]**b)*(ell_Tet[2]**c)*(ell_Tet[3]**(d-1))*dl_Tet[3])) , dl_Tet[t])
+# Note: This function computes the divegence of the following general form:
+#       Divergence((ell_0**a * ell_1**b * ell_2**c * ell_3**d * Gradient[ell_Tet][s]) $\times$ Gradient[ell_Tet][t])
+# where a, b, c, d are nonnegative integers, and s, t belongs to {0, 1, 2, 3}.
+def div_F_Wbasis(ell_Tet,dl_Tet,a,b,c,d,s,t):
+    val = np.cross(((a*(ell_Tet[0]**(a-1))*(ell_Tet[1]**b)*(ell_Tet[2]**c)*(ell_Tet[3]**d)*dl_Tet[0])+
+                    (b*(ell_Tet[0]**a)*(ell_Tet[1]**(b-1))*(ell_Tet[2]**c)*(ell_Tet[3]**d)*dl_Tet[1])+
+                    (c*(ell_Tet[0]**a)*(ell_Tet[1]**b)*(ell_Tet[2]**(c-1))*(ell_Tet[3]**d)*dl_Tet[2])+
+                    (d*(ell_Tet[0]**a)*(ell_Tet[1]**b)*(ell_Tet[2]**c)*(ell_Tet[3]**(d-1))*dl_Tet[3])) , dl_Tet[s])
+    return np.dot(val,dl_Tet[t])
 
-# Curl of Edge Whitney basis (order = 2)
-# Edges
-def curl_E_W01_0(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,2,0,0,0,1) - curl_E_Wbasis(ell_Tet,dl_Tet,1,1,0,0,0)
-def curl_E_W01_1(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,1,1,0,0,1) - curl_E_Wbasis(ell_Tet,dl_Tet,0,2,0,0,0)
-def curl_E_W02_0(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,2,0,0,0,2) - curl_E_Wbasis(ell_Tet,dl_Tet,1,0,1,0,0)
-def curl_E_W02_1(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,1,0,1,0,2) - curl_E_Wbasis(ell_Tet,dl_Tet,0,0,2,0,0)
-def curl_E_W03_0(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,2,0,0,0,3) - curl_E_Wbasis(ell_Tet,dl_Tet,1,0,0,1,0)
-def curl_E_W03_1(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,1,0,0,1,3) - curl_E_Wbasis(ell_Tet,dl_Tet,0,0,0,2,0)
-def curl_E_W12_0(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,0,2,0,0,2) - curl_E_Wbasis(ell_Tet,dl_Tet,0,1,1,0,1)
-def curl_E_W12_1(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,0,1,1,0,2) - curl_E_Wbasis(ell_Tet,dl_Tet,0,0,2,0,1)
-def curl_E_W13_0(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,0,2,0,0,3) - curl_E_Wbasis(ell_Tet,dl_Tet,0,1,0,1,1)
-def curl_E_W13_1(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,0,1,0,1,3) - curl_E_Wbasis(ell_Tet,dl_Tet,0,0,0,2,1)
-def curl_E_W23_0(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,0,0,2,0,3) - curl_E_Wbasis(ell_Tet,dl_Tet,0,0,1,1,2)
-def curl_E_W23_1(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,0,0,1,1,3) - curl_E_Wbasis(ell_Tet,dl_Tet,0,0,0,2,2)
-
-# Triangles
-def curl_E_W012_0(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,1,0,1,0,1) - curl_E_Wbasis(ell_Tet,dl_Tet,0,1,1,0,0)
-def curl_E_W012_1(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,1,1,0,0,2) - curl_E_Wbasis(ell_Tet,dl_Tet,0,1,1,0,0)
-def curl_E_W013_0(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,1,0,0,1,1) - curl_E_Wbasis(ell_Tet,dl_Tet,0,1,0,1,0)
-def curl_E_W013_1(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,1,1,0,0,3) - curl_E_Wbasis(ell_Tet,dl_Tet,0,1,0,1,0)
-def curl_E_W023_0(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,1,0,0,1,2) - curl_E_Wbasis(ell_Tet,dl_Tet,0,0,1,1,0)
-def curl_E_W023_1(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,1,0,1,0,3) - curl_E_Wbasis(ell_Tet,dl_Tet,0,0,1,1,0)
-def curl_E_W123_0(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,0,1,0,1,2) - curl_E_Wbasis(ell_Tet,dl_Tet,0,0,1,1,1)
-def curl_E_W123_1(ell_Tet,dl_Tet):
-    return curl_E_Wbasis(ell_Tet,dl_Tet,0,1,1,0,3) - curl_E_Wbasis(ell_Tet,dl_Tet,0,0,1,1,1)
-
-
-# Face Whitney basis (order = 2) on physical simplex
-def F_W012_0(ell_Tet,dl_Tet):
-    return ell_Tet[0] * (np.cross(ell_Tet[0]*dl_Tet[1],dl_Tet[2]) - 
-                         np.cross(ell_Tet[1]*dl_Tet[0],dl_Tet[2]) + np.cross(ell_Tet[2]*dl_Tet[0],dl_Tet[1]))
-def F_W012_1(ell_Tet,dl_Tet):
-    return ell_Tet[1] * (np.cross(ell_Tet[0]*dl_Tet[1],dl_Tet[2]) - 
-                         np.cross(ell_Tet[1]*dl_Tet[0],dl_Tet[2]) + np.cross(ell_Tet[2]*dl_Tet[0],dl_Tet[1]))
-def F_W012_2(ell_Tet,dl_Tet):
-    return ell_Tet[2] * (np.cross(ell_Tet[0]*dl_Tet[1],dl_Tet[2]) - 
-                         np.cross(ell_Tet[1]*dl_Tet[0],dl_Tet[2]) + np.cross(ell_Tet[2]*dl_Tet[0],dl_Tet[1]))
-def F_W013_0(ell_Tet,dl_Tet):
-    return ell_Tet[0] * (np.cross(ell_Tet[0]*dl_Tet[1],dl_Tet[3]) - 
-                         np.cross(ell_Tet[1]*dl_Tet[0],dl_Tet[3]) + np.cross(ell_Tet[3]*dl_Tet[0],dl_Tet[1]))
-def F_W013_1(ell_Tet,dl_Tet):
-    return ell_Tet[1] * (np.cross(ell_Tet[0]*dl_Tet[1],dl_Tet[3]) - 
-                         np.cross(ell_Tet[1]*dl_Tet[0],dl_Tet[3]) + np.cross(ell_Tet[3]*dl_Tet[0],dl_Tet[1]))
-def F_W013_2(ell_Tet,dl_Tet):
-    return ell_Tet[3] * (np.cross(ell_Tet[0]*dl_Tet[1],dl_Tet[3]) - 
-                         np.cross(ell_Tet[1]*dl_Tet[0],dl_Tet[3]) + np.cross(ell_Tet[3]*dl_Tet[0],dl_Tet[1]))
-def F_W023_0(ell_Tet,dl_Tet):
-    return ell_Tet[0] * (np.cross(ell_Tet[0]*dl_Tet[2],dl_Tet[3]) - 
-                         np.cross(ell_Tet[2]*dl_Tet[0],dl_Tet[3]) + np.cross(ell_Tet[3]*dl_Tet[0],dl_Tet[2]))
-def F_W023_1(ell_Tet,dl_Tet):
-    return ell_Tet[2] * (np.cross(ell_Tet[0]*dl_Tet[2],dl_Tet[3]) - 
-                         np.cross(ell_Tet[2]*dl_Tet[0],dl_Tet[3]) + np.cross(ell_Tet[3]*dl_Tet[0],dl_Tet[2]))
-def F_W023_2(ell_Tet,dl_Tet):
-    return ell_Tet[3] * (np.cross(ell_Tet[0]*dl_Tet[2],dl_Tet[3]) - 
-                         np.cross(ell_Tet[2]*dl_Tet[0],dl_Tet[3]) + np.cross(ell_Tet[3]*dl_Tet[0],dl_Tet[2]))
-def F_W123_0(ell_Tet,dl_Tet):
-    return ell_Tet[1] * (np.cross(ell_Tet[1]*dl_Tet[2],dl_Tet[3]) - 
-                         np.cross(ell_Tet[2]*dl_Tet[1],dl_Tet[3]) + np.cross(ell_Tet[3]*dl_Tet[1],dl_Tet[2]))
-def F_W123_1(ell_Tet,dl_Tet):
-    return ell_Tet[2] * (np.cross(ell_Tet[1]*dl_Tet[2],dl_Tet[3]) - 
-                         np.cross(ell_Tet[2]*dl_Tet[1],dl_Tet[3]) + np.cross(ell_Tet[3]*dl_Tet[1],dl_Tet[2]))
-def F_W123_2(ell_Tet,dl_Tet):
-    return ell_Tet[3] * (np.cross(ell_Tet[1]*dl_Tet[2],dl_Tet[3]) - 
-                         np.cross(ell_Tet[2]*dl_Tet[1],dl_Tet[3]) + np.cross(ell_Tet[3]*dl_Tet[1],dl_Tet[2]))
-
-# Tetrahedrons
-def F_W0123_0(ell_Tet,dl_Tet):
-    return ell_Tet[3] * (np.cross(ell_Tet[0]*dl_Tet[1],dl_Tet[2]) - 
-                         np.cross(ell_Tet[1]*dl_Tet[0],dl_Tet[2]) + np.cross(ell_Tet[2]*dl_Tet[0],dl_Tet[1]))
-def F_W0123_1(ell_Tet,dl_Tet):
-    return ell_Tet[2] * (np.cross(ell_Tet[0]*dl_Tet[1],dl_Tet[3]) - 
-                         np.cross(ell_Tet[1]*dl_Tet[0],dl_Tet[3]) + np.cross(ell_Tet[3]*dl_Tet[0],dl_Tet[1]))
-def F_W0123_2(ell_Tet,dl_Tet):
-    return ell_Tet[1] * (np.cross(ell_Tet[0]*dl_Tet[2],dl_Tet[3]) - 
-                         np.cross(ell_Tet[2]*dl_Tet[0],dl_Tet[3]) + np.cross(ell_Tet[3]*dl_Tet[0],dl_Tet[2]))    
+# Divergence of Face Whitney basis on physical tetrahedron
+def div_F_W012(ell_Tet,dl_Tet):
+    return div_F_Wbasis(ell_Tet,dl_Tet,1,0,0,0,1,2) - div_F_Wbasis(ell_Tet,dl_Tet,0,1,0,0,0,2) + div_F_Wbasis(ell_Tet,dl_Tet,0,0,1,0,0,1)
+def div_F_W013(ell_Tet,dl_Tet):
+    return div_F_Wbasis(ell_Tet,dl_Tet,1,0,0,0,1,3) - div_F_Wbasis(ell_Tet,dl_Tet,0,1,0,0,0,3) + div_F_Wbasis(ell_Tet,dl_Tet,0,0,0,1,0,1)
+def div_F_W023(ell_Tet,dl_Tet):
+    return div_F_Wbasis(ell_Tet,dl_Tet,1,0,0,0,2,3) - div_F_Wbasis(ell_Tet,dl_Tet,0,0,1,0,0,3) + div_F_Wbasis(ell_Tet,dl_Tet,0,0,0,1,0,2)
+def div_F_W123(ell_Tet,dl_Tet):
+    return div_F_Wbasis(ell_Tet,dl_Tet,0,1,0,0,2,3) - div_F_Wbasis(ell_Tet,dl_Tet,0,0,1,0,1,3) + div_F_Wbasis(ell_Tet,dl_Tet,0,0,0,1,1,2)
 
 # Lists referencing the various basis functions
-V_Ws = [W0, W1, W2, W3, W4, W5, W6, W7, W8, W9]
-grad_V_Ws = [grad_W0, grad_W1, grad_W2, grad_W3, grad_W4, grad_W5, grad_W6, grad_W7, grad_W8, grad_W9]
-E_Ws = [E_W01_0, E_W01_1, E_W02_0, E_W02_1, E_W03_0, E_W03_1, E_W12_0, E_W12_1, E_W13_0, E_W13_1, E_W23_0, E_W23_1,
-         E_W012_0, E_W012_1, E_W013_0, E_W013_1, E_W023_0, E_W023_1, E_W123_0, E_W123_1]
-Eb_Ws = [E_W01_0, E_W01_1, E_W02_0, E_W02_1, E_W12_0, E_W12_1, E_W012_0, E_W012_1]
-curl_E_Ws = [curl_E_W01_0, curl_E_W01_1, curl_E_W02_0, curl_E_W02_1, curl_E_W03_0, curl_E_W03_1, curl_E_W12_0, curl_E_W12_1,
-              curl_E_W13_0, curl_E_W13_1, curl_E_W23_0, curl_E_W23_1, curl_E_W012_0, curl_E_W012_1, curl_E_W013_0, curl_E_W013_1,
-                curl_E_W023_0, curl_E_W023_1, curl_E_W123_0, curl_E_W123_1]
-F_Ws = [F_W012_0, F_W012_1, F_W012_2, F_W013_0, F_W013_1, F_W013_2, F_W023_0, F_W023_1, F_W023_2,
-         F_W123_0, F_W123_1, F_W123_2, F_W0123_0, F_W0123_1, F_W0123_2]
+V_Ws = [W0, W1, W2, W3]
+grad_V_Ws = [grad_W0, grad_W1, grad_W2, grad_W3]
+E_Ws = [E_W01, E_W02, E_W03, E_W12, E_W13, E_W23]
+Eb_Ws = [E_W01, E_W02, E_W12]
+curl_E_Ws = [curl_E_W01, curl_E_W02, curl_E_W03, curl_E_W12, curl_E_W13, curl_E_W23]
+F_Ws = [F_W012, F_W013, F_W023, F_W123]
+div_F_Ws = [div_F_W012, div_F_W013, div_F_W023, div_F_W123]
 
 ##  Finite Element System Computations  ##
 # Mass Matrix 00: Inner product of Lagrange Basis and Lagrange Basis
@@ -452,7 +330,7 @@ def Stiff_01(Tet, Tet_index):
         for j in range(len(E_Ws)):    # Loop over edges (E basis)
             integral = 0
             for kq, qp_b in enumerate(qnodes_bary):
-                integral += np.dot(grad_V_Ws[i](qp_b, dl_Tet), 
+                integral += np.dot(grad_V_Ws[i](dl_Tet), 
                                    E_Ws[j](qp_b, dl_Tet)) * qweights[kq]
             integral *= vol_phy_tet/vol_std_tet
             S[i, j] = integral
@@ -505,7 +383,7 @@ def Stiff_12(Tet, Tet_index):
         for j in range(len(F_Ws)):    # Loop over faces (H basis)
             integral = 0
             for kq, qp_b in enumerate(qnodes_bary):
-                integral += np.dot(curl_E_Ws[i](qp_b, dl_Tet), 
+                integral += np.dot(curl_E_Ws[i](dl_Tet), 
                                    F_Ws[j](qp_b, dl_Tet)) * qweights[kq]
             integral *= vol_phy_tet/vol_std_tet
             S[i, j] = integral
@@ -580,7 +458,7 @@ N2 = sc[2].num_simplices
 N3 = sc[3].num_simplices
 
 print("============================================================")
-print("Spatial Discretization using Quadratic Polynomial Basis.")
+print("Spatial Discretization using Linear Polynomial Basis.")
 print("Initial Time: ", T_min, ", Final Time: ", T_max, ", Time Step Size: ", dt)
 print("============================================================")
 
@@ -637,11 +515,9 @@ boundary_edge_indices = np.sort(list(set(boundary_edge_indices)))
 boundary_edges = sc[1].simplices[boundary_edge_indices]
 
 N1b = boundary_edge_indices.shape[0]    # Number of edges in the boundary
-N2b = boundary_face_indices.shape[0]    # Number of faces in the boundary
 
-# Reindex the boundary edges and faces to ensure that they are contiguously indexed for the following computations
+# Reindex the boundary edges to ensure that they are contiguously indexed for the following computations
 boundary_edge_index_map = {v:k for k, v in enumerate(boundary_edge_indices)}
-boundary_face_index_map = {v:k for k, v in enumerate(boundary_face_indices)}
 
 # Obtain the boundary vertices of the mesh
 boundary_vertex_indices = np.array(list(set(list(np.ravel(sc[1].simplices[boundary_edge_indices])))))
@@ -673,47 +549,12 @@ for index, (Face_index, Face) in enumerate(zip(boundary_face_indices, boundary_f
     # Integrate the local boundary mass matrices into data structures for the global boundary mass matrix
     for i in range(3):    # Loop over edges (sigma basis)
         for j in range(3):    # Loop over edges (sigma basis)
-            rowsb1b1.append(2*boundary_edge_index_map[edge_indices_Face[i]])
-            columnsb1b1.append(2*boundary_edge_index_map[edge_indices_Face[j]])
-            Mb1b1_data.append(Mb1b1[2*i, 2*j])
-
-            rowsb1b1.append(2*boundary_edge_index_map[edge_indices_Face[i]])
-            columnsb1b1.append(2*boundary_edge_index_map[edge_indices_Face[j]] + 1)
-            Mb1b1_data.append(Mb1b1[2*i, 2*j + 1])
-
-            rowsb1b1.append(2*boundary_edge_index_map[edge_indices_Face[i]] + 1)
-            columnsb1b1.append(2*boundary_edge_index_map[edge_indices_Face[j]])
-            Mb1b1_data.append(Mb1b1[2*i + 1, 2*j])
-
-            rowsb1b1.append(2*boundary_edge_index_map[edge_indices_Face[i]] + 1)
-            columnsb1b1.append(2*boundary_edge_index_map[edge_indices_Face[j]] + 1)
-            Mb1b1_data.append(Mb1b1[2*i + 1, 2*j + 1])
-
-        for j in range (2):    # Loop over faces (sigma basis) 
-            rowsb1b1.append(2*boundary_edge_index_map[edge_indices_Face[i]])
-            columnsb1b1.append(2*N1b + 2*boundary_face_index_map[Face_index] + j)
-            Mb1b1_data.append(Mb1b1[2*i, 6 + j])
-            # Symmetric part
-            rowsb1b1.append(2*N1b + 2*boundary_face_index_map[Face_index] + j)
-            columnsb1b1.append(2*boundary_edge_index_map[edge_indices_Face[i]])
-            Mb1b1_data.append(Mb1b1[6 + j, 2*i])
-
-            rowsb1b1.append(2*boundary_edge_index_map[edge_indices_Face[i]] + 1)
-            columnsb1b1.append(2*N1b + 2*boundary_face_index_map[Face_index] + j)
-            Mb1b1_data.append(Mb1b1[2*i + 1, 6 + j])
-            # Symmetric part
-            rowsb1b1.append(2*N1b + 2*boundary_face_index_map[Face_index] + j)
-            columnsb1b1.append(2*boundary_edge_index_map[edge_indices_Face[i]] + 1)
-            Mb1b1_data.append(Mb1b1[6 + j, 2*i + 1])
-
-    for i in range(2):    # Loop over faces (sigma basis) 
-        for j in range(2):    # Loop over faces (sigma basis) 
-            rowsb1b1.append(2*N1b + 2*boundary_face_index_map[Face_index] + i)
-            columnsb1b1.append(2*N1b + 2*boundary_face_index_map[Face_index] + j)
-            Mb1b1_data.append(Mb1b1[6 + i, 6 + j])
+            rowsb1b1.append(boundary_edge_index_map[edge_indices_Face[i]])
+            columnsb1b1.append(boundary_edge_index_map[edge_indices_Face[j]])
+            Mb1b1_data.append(Mb1b1[i, j])
     
 # Setup the Global Boundary Mass Matrix as SciPy sparse matrices
-Mb1b1_g = sprs.coo_matrix((Mb1b1_data, (rowsb1b1, columnsb1b1)), (2*N1b+2*N2b, 2*N1b+2*N2b), dtype='float')
+Mb1b1_g = sprs.coo_matrix((Mb1b1_data, (rowsb1b1, columnsb1b1)), (N1b, N1b), dtype='float')
 Mb1b1_g = Mb1b1_g.tocsr()
 
 # Data structures to define the various Mass and Stiffness matrices
@@ -724,7 +565,7 @@ rows12 = []; columns12 = []; S12_data = []
 rows22 = []; columns22 = []; M22_data = []
 
 # Initialize solution and right hand side vectors
-p_0 = np.zeros(N0+N1); E_0 = np.zeros(2*N1+2*N2); H_0 = np.zeros(3*N2+3*N3)
+p_0 = np.zeros(N0); E_0 = np.zeros(N1); H_0 = np.zeros(N2)
 
 # Obtain the mass and stiffness matrices on each tetrahedron and integrate into the global ones
 print("\tbuilding stiffness and mass matrix..."); sys.stdout.flush()
@@ -750,7 +591,6 @@ for Tet_index, Tet in enumerate(tqdm.tqdm(sc[3].simplices)):
     M22 = Mass_22(Tet, Tet_index)
     
     # Integrate the local matrices into data structures for the global matrices
-    # Integrate Local Mass Matrix 00 into Global Mass Matrix 00
     for i in range(4):    # Loop over vertices
         for j in range(4):    # Loop over vertices
             rows00.append(Tet[i])
@@ -758,385 +598,59 @@ for Tet_index, Tet in enumerate(tqdm.tqdm(sc[3].simplices)):
             M00_data.append(M00[i, j])
 
         for j in range(6):    # Loop over edges
-            rows00.append(Tet[i])
-            columns00.append(N0 + edges_Tet[j])
-            M00_data.append(M00[i, 4 + j])
-
-            # Symmetric part
-            rows00.append(N0 + edges_Tet[j])
-            columns00.append(Tet[i])
-            M00_data.append(M00[4 + j, i])
+            rows01.append(Tet[i])
+            columns01.append(edges_Tet[j])
+            S01_data.append(S01[i, j])
 
     for i in range(6):    # Loop over edges
         for j in range(6):    # Loop over edges
-            rows00.append(N0 + edges_Tet[i])
-            columns00.append(N0 + edges_Tet[j])
-            M00_data.append(M00[4 + i, 4 + j])
+            rows11.append(edges_Tet[i])
+            columns11.append(edges_Tet[j])
+            M11_data.append(M11[i, j])
 
-    # Integrate Local Stiffness Matrix 01 into Global Stiffness Matrix 01
-    # Vertices-Edges(Basis 0): 
-    for i in range(4):    # Loop over vertices
-        for j in range(6):    # Loop over edges
-            rows01.append(Tet[i])
-            columns01.append(2*edges_Tet[j])
-            S01_data.append(S01[i, 2*j])
-
-    # Vertices-Edges(Basis 1):
-            rows01.append(Tet[i])
-            columns01.append(2*edges_Tet[j]+1)
-            S01_data.append(S01[i, 2*j+1])
-
-    # Vertices-Triangles(Basis 0): 
         for j in range(4):    # Loop over faces
-            rows01.append(Tet[i])
-            columns01.append(2*N1 + 2*faces_Tet[j])
-            S01_data.append(S01[i, 12 + 2*j])
+            rows12.append(edges_Tet[i])
+            columns12.append(faces_Tet[j])
+            S12_data.append(S12[i, j])
 
-    # Vertices-Triangles(Basis 1):
-            rows01.append(Tet[i])
-            columns01.append(2*N1 + 2*faces_Tet[j]+1)
-            S01_data.append(S01[i, 12 + 2*j+1])
-
-    # Edges-Edges(Basis 0): 
-    for i in range(6):    # Loop over edges
-        for j in range(6):    # Loop over edges
-            rows01.append(N0 + edges_Tet[i])
-            columns01.append(2*edges_Tet[j])
-            S01_data.append(S01[4 + i, 2*j])
-
-    # Edges-Edges(Basis 1):
-            rows01.append(N0 + edges_Tet[i])
-            columns01.append(2*edges_Tet[j]+1)
-            S01_data.append(S01[4 + i, 2*j+1])
-
-    # Edges-Triangles(Basis 0): 
+    for i in range(4):    # Loop over faces
         for j in range(4):    # Loop over faces
-            rows01.append(N0 + edges_Tet[i])
-            columns01.append(2*N1 + 2*faces_Tet[j])
-            S01_data.append(S01[4 + i, 12 + 2*j])
-
-    # Edges-Triangles(Basis 1):
-            rows01.append(N0 + edges_Tet[i])
-            columns01.append(2*N1 + 2*faces_Tet[j]+1)
-            S01_data.append(S01[4 + i, 12 + 2*j+1])    
-
-    # Integrate Local Mass Matrix 11 into Global Mass Matrix 11
-    # Edges-Edges: <Basis 0, Basis 0> 
-    for i in range(6):    # Loop over edges
-        for j in range(6):    # Loop over edges
-            rows11.append(2*edges_Tet[i])
-            columns11.append(2*edges_Tet[j])
-            M11_data.append(M11[2*i, 2*j])
-
-    # Edges-Edges: <Basis 0, Basis 1> and <Basis 1, Basis 0>
-            rows11.append(2*edges_Tet[i])
-            columns11.append(2*edges_Tet[j] + 1)
-            M11_data.append(M11[2*i, 2*j + 1])
-
-            # Symmetric part
-            rows11.append(2*edges_Tet[j] + 1)
-            columns11.append(2*edges_Tet[i])
-            M11_data.append(M11[2*j + 1, 2*i])
-
-    # Edges-Edges: <Basis 1, Basis 1>
-            rows11.append(2*edges_Tet[i] + 1)
-            columns11.append(2*edges_Tet[j] + 1)
-            M11_data.append(M11[2*i+1, 2*j+1])
-
-    # Edges-Triangles: <Basis 0, Basis 0> 
-        for j in range(4):    # Loop over faces
-            rows11.append(2*edges_Tet[i])
-            columns11.append(2*N1 + 2*faces_Tet[j])
-            M11_data.append(M11[2*i, 12 + 2*j])
-
-    # Edges-Triangles: <Basis 0, Basis 1> and <Basis 1, Basis 0>
-            rows11.append(2*edges_Tet[i])
-            columns11.append(2*N1 + 2*faces_Tet[j] + 1)
-            M11_data.append(M11[2*i, 12 + 2*j + 1])
-
-            # Symmetric part
-            rows11.append(2*edges_Tet[i] + 1)
-            columns11.append(2*N1 + 2*faces_Tet[j])
-            M11_data.append(M11[2*i + 1, 12 + 2*j])
-
-    # Edges-Triangles: <Basis 1, Basis 1>
-            rows11.append(2*edges_Tet[i] + 1)
-            columns11.append(2*N1 + 2*faces_Tet[j] + 1)
-            M11_data.append(M11[2*i + 1, 12 + 2*j + 1])
+            rows22.append(faces_Tet[i])
+            columns22.append(faces_Tet[j])
+            M22_data.append(M22[i, j])
         
-    # Triangles-Edges: <Basis 0, Basis 0>
-            rows11.append(2*N1 + 2*faces_Tet[j])
-            columns11.append(2*edges_Tet[i])
-            M11_data.append(M11[12 + 2*j, 2*i])
-
-    # Triangles-Edges: <Basis 0, Basis 1> and <Basis 1, Basis 0>
-            rows11.append(2*N1 + 2*faces_Tet[j])
-            columns11.append(2*edges_Tet[i] + 1)
-            M11_data.append(M11[12 + 2*j, 2*i + 1])
-
-            # Symmetric part
-            rows11.append(2*N1 + 2*faces_Tet[j] + 1)
-            columns11.append(2*edges_Tet[i])
-            M11_data.append(M11[12 + 2*j + 1, 2*i])
-
-    # Triangles-Edges: <Basis 1, Basis 1>
-            rows11.append(2*N1 + 2*faces_Tet[j] + 1)
-            columns11.append(2*edges_Tet[i] + 1)
-            M11_data.append(M11[12 + 2*j + 1, 2*i + 1])
-            
-    # Triangles-Triangles: <Basis 0, Basis 0> 
-    for i in range(4):    # Loop over faces
-        for j in range(4):    # Loop over faces
-            rows11.append(2*N1 + 2*faces_Tet[i])
-            columns11.append(2*N1 + 2*faces_Tet[j])
-            M11_data.append(M11[12 + 2*i, 12 + 2*j])
-
-    # Triangles-Triangles: <Basis 0, Basis 1> and <Basis 1, Basis 0>
-            rows11.append(2*N1 + 2*faces_Tet[i])
-            columns11.append(2*N1 + 2*faces_Tet[j] + 1)
-            M11_data.append(M11[12 + 2*i, 12 + 2*j + 1])
-
-            # Symmetric part
-            rows11.append(2*N1 + 2*faces_Tet[j] + 1)
-            columns11.append(2*N1 + 2*faces_Tet[i])
-            M11_data.append(M11[12 + 2*j + 1, 12 + 2*i]) 
-            
-    # Triangles-Triangles: <Basis 1, Basis 1>       
-            rows11.append(2*N1 + 2*faces_Tet[i] + 1)
-            columns11.append(2*N1 + 2*faces_Tet[j] + 1)
-            M11_data.append(M11[12 + 2*i + 1, 12 + 2*j + 1])
-
-    # Integrate Local Stiffness Matrix 12 into Global Stiffness Matrix 12
-    for i in range(6):    # Loop over edges
-        for j in range(4):    # Loop over faces
-    # Edges-Triangles: <Basis 0, Basis 0>
-            rows12.append(2*edges_Tet[i])
-            columns12.append(3*faces_Tet[j])
-            S12_data.append(S12[2*i, 3*j])
-            
-    # Edges-Triangles: <Basis 0, Basis 1>
-            rows12.append(2*edges_Tet[i])
-            columns12.append(3*faces_Tet[j] + 1)
-            S12_data.append(S12[2*i, 3*j + 1])
-            
-    # Edges-Triangles: <Basis 0, Basis 2>
-            rows12.append(2*edges_Tet[i])
-            columns12.append(3*faces_Tet[j] + 2)
-            S12_data.append(S12[2*i, 3*j + 2])
-
-    # Edges-Triangles: <Basis 1, Basis 0>
-            rows12.append(2*edges_Tet[i] + 1)
-            columns12.append(3*faces_Tet[j])
-            S12_data.append(S12[2*i + 1, 3*j])
-            
-    # Edges-Triangles: <Basis 1, Basis 1>
-            rows12.append(2*edges_Tet[i] + 1)
-            columns12.append(3*faces_Tet[j] + 1)
-            S12_data.append(S12[2*i + 1, 3*j + 1])
-            
-    # Edges-Triangles: <Basis 1, Basis 2>
-            rows12.append(2*edges_Tet[i] + 1)
-            columns12.append(3*faces_Tet[j] + 2)
-            S12_data.append(S12[2*i + 1, 3*j + 2])
-            
-            
-        for j in range(3):    # Loop over tets
-    # Edges-Tetrahedrons: <Basis 0, Basis {0, 1, 2}>
-            rows12.append(2*edges_Tet[i])
-            columns12.append(3*N2 + 3*Tet_index + j)
-            S12_data.append(S12[2*i, 12 + j])
-            
-    # Edges-Tetrahedrons: <Basis 1, Basis {0, 1, 2}>
-            rows12.append(2*edges_Tet[i] + 1)
-            columns12.append(3*N2 + 3*Tet_index + j)
-            S12_data.append(S12[2*i + 1, 12 + j])
-            
-    for i in range(4):    # Loop over faces
-        for j in range(4):    # Loop over faces
-    # Triangles-Triangles: <Basis 0, Basis 0>
-            rows12.append(2*N1 + 2*faces_Tet[i])
-            columns12.append(3*faces_Tet[j])
-            S12_data.append(S12[12 + 2*i, 3*j])
-            
-    # Triangles-Triangles: <Basis 0, Basis 1>
-            rows12.append(2*N1 + 2*faces_Tet[i])
-            columns12.append(3*faces_Tet[j] + 1)
-            S12_data.append(S12[12 + 2*i, 3*j + 1])
-            
-    # Triangles-Triangles: <Basis 0, Basis 2>
-            rows12.append(2*N1 + 2*faces_Tet[i])
-            columns12.append(3*faces_Tet[j] + 2)
-            S12_data.append(S12[12 + 2*i, 3*j + 2])
-
-    # Triangles-Triangles: <Basis 1, Basis 0>
-            rows12.append(2*N1 + 2*faces_Tet[i] + 1)
-            columns12.append(3*faces_Tet[j])
-            S12_data.append(S12[12 + 2*i + 1, 3*j])
-            
-    # Triangles-Triangles: <Basis 1, Basis 1>
-            rows12.append(2*N1 + 2*faces_Tet[i] + 1)
-            columns12.append(3*faces_Tet[j] + 1)
-            S12_data.append(S12[12 + 2*i + 1, 3*j + 1])
-            
-    # Triangles-Triangles: <Basis 1, Basis 2>
-            rows12.append(2*N1 + 2*faces_Tet[i] + 1)
-            columns12.append(3*faces_Tet[j] + 2)
-            S12_data.append(S12[12 + 2*i + 1, 3*j + 2])
-            
-        for j in range(3):    # Loop over tets
-    # Triangles-Tetrahedrons: <Basis 0, Basis {0, 1, 2}>
-            rows12.append(2*N1 + 2*faces_Tet[i])
-            columns12.append(3*N2 + 3*Tet_index + j)
-            S12_data.append(S12[12 + 2*i, 12 + j])
-            
-    # Triangles-Tetrahedrons: <Basis 1, Basis {0, 1, 2}>
-            rows12.append(2*N1 + 2*faces_Tet[i] + 1)
-            columns12.append(3*N2 + 3*Tet_index + j)
-            S12_data.append(S12[12 + 2*i + 1, 12 + j])
-    
-    # Integrate Local Mass Matrix 22 into Global Mass Matrix 22
-    # Triangles-Triangles: <Basis 0, Basis 0> 
-    for i in range(4):    # Loop over tets
-        for j in range(4):    # Loop over tets
-            rows22.append(3*faces_Tet[i])
-            columns22.append(3*faces_Tet[j])
-            M22_data.append(M22[3*i, 3*j])
-
-    # Triangles-Triangles: <Basis 1, Basis 1>
-            rows22.append(3*faces_Tet[i] + 1)
-            columns22.append(3*faces_Tet[j] + 1)
-            M22_data.append(M22[3*i+1, 3*j+1])
-
-    # Triangles-Triangles: <Basis 2, Basis 2>
-            rows22.append(3*faces_Tet[i] + 2)
-            columns22.append(3*faces_Tet[j] + 2)
-            M22_data.append(M22[3*i+2, 3*j+2])
-
-    # Triangles-Triangles: <Basis 0, Basis 1> and <Basis 1, Basis 0>
-            rows22.append(3*faces_Tet[i])
-            columns22.append(3*faces_Tet[j] + 1)
-            M22_data.append(M22[3*i, 3*j + 1])
-
-            # Symmetric part
-            columns22.append(3*faces_Tet[i])
-            rows22.append(3*faces_Tet[j] + 1)
-            M22_data.append(M22[3*j + 1, 3*i])
-
-    # Triangles-Triangles: <Basis 0, Basis 2> and <Basis 2, Basis 0>
-            rows22.append(3*faces_Tet[i])
-            columns22.append(3*faces_Tet[j] + 2)
-            M22_data.append(M22[3*i, 3*j + 2])
-
-            # Symmetric part
-            columns22.append(3*faces_Tet[i])
-            rows22.append(3*faces_Tet[j] + 2)
-            M22_data.append(M22[3*j + 2, 3*i])
-
-    # Triangles-Triangles: <Basis 1, Basis 2> and <Basis 2, Basis 1>
-            rows22.append(3*faces_Tet[i] + 1)
-            columns22.append(3*faces_Tet[j] + 2)
-            M22_data.append(M22[3*i + 1, 3*j + 2])
-
-            # Symmetric part
-            columns22.append(3*faces_Tet[i] + 1)
-            rows22.append(3*faces_Tet[j] + 2)
-            M22_data.append(M22[3*j + 2, 3*i + 1])    
-
-    # Triangles-Tetrahedrons: <Basis 0, Basis {0, 1, 2}>
-        for j in range(3):
-            rows22.append(3*faces_Tet[i])
-            columns22.append(3*N2 + 3*Tet_index + j)
-            M22_data.append(M22[3*i, 3*4 + j])
-
-            # Symmetric part
-            columns22.append(3*faces_Tet[i])
-            rows22.append(3*N2 + 3*Tet_index + j)
-            M22_data.append(M22[3*4 + j, 3*i])
-
-    # Triangles-Tetrahedrons: <Basis 1, Basis {0, 1, 2}>
-            rows22.append(3*faces_Tet[i] + 1)
-            columns22.append(3*N2 + 3*Tet_index + j)
-            M22_data.append(M22[3*i + 1, 3*4 + j])
-
-            # Symmetric part
-            columns22.append(3*faces_Tet[i] + 1)
-            rows22.append(3*N2 + 3*Tet_index + j)
-            M22_data.append(M22[3*4 + j, 3*i + 1])
-
-    # Triangles-Tetrahedrons: <Basis 2, Basis {0, 1, 2}>
-            rows22.append(3*faces_Tet[i] + 2)
-            columns22.append(3*N2 + 3*Tet_index + j)
-            M22_data.append(M22[3*i + 2, 3*4 + j])
-
-            # Symmetric part
-            columns22.append(3*faces_Tet[i] + 2)
-            rows22.append(3*N2 + 3*Tet_index + j)
-            M22_data.append(M22[3*4 + j, 3*i + 2])
-
-    # Tetrahedrons-Tetrahedrons: <Basis {0, 1, 2}, Basis {0, 1, 2}>
-    for i in range(3):
-        for j in range(3):
-            rows22.append(3*N2 + 3*Tet_index + i)
-            columns22.append(3*N2 + 3*Tet_index + j)
-            M22_data.append(M22[3*4+i, 3*4+j])
-            
     for i in range(6):
-        for j in range(2):
-            E_integral = 0
-            for kq, qp_b in enumerate(qnodes_bary):
-                x_q = np.dot(qp_b, vertices_Tet[:, 0])
-                y_q = np.dot(qp_b, vertices_Tet[:, 1])
-                z_q = np.dot(qp_b, vertices_Tet[:, 2])
-                # Computing Initial Vector at t = T_min
-                E_integral += np.dot(E_analytical([x_q, y_q, z_q], T_min) , E_Ws[2*i+j](qp_b, dl_Tet)) * qweights[kq]
-            E_integral *= integral_scaling
-            E_0[2*edges_Tet[i]+j] += E_integral
+        E_integral = 0
+        for kq, qp_b in enumerate(qnodes_bary):
+            x_q = np.dot(qp_b, vertices_Tet[:, 0])
+            y_q = np.dot(qp_b, vertices_Tet[:, 1])
+            z_q = np.dot(qp_b, vertices_Tet[:, 2])
+            # Computing Initial Vector at t = T_min
+            E_integral += np.dot(E_analytical([x_q, y_q, z_q], T_min) , E_Ws[i](qp_b, dl_Tet)) * qweights[kq]
+        E_integral *= integral_scaling
+        E_0[edges_Tet[i]] += E_integral
 
     for i in range(4):
-        for j in range(2):
-            E_integral = 0
-            for kq, qp_b in enumerate(qnodes_bary):
-                x_q = np.dot(qp_b, vertices_Tet[:, 0])
-                y_q = np.dot(qp_b, vertices_Tet[:, 1])
-                z_q = np.dot(qp_b, vertices_Tet[:, 2])
-                # Computing Initial Vector at t = T_min
-                E_integral += np.dot(E_analytical([x_q, y_q, z_q], T_min) , E_Ws[12+2*i+j](qp_b, dl_Tet)) * qweights[kq]
-            E_integral *= integral_scaling
-            E_0[2*N1+2*faces_Tet[i]+j] += E_integral
-
-    for i in range(4):
-        for j in range(3):
-            H_integral = 0
-            for kq, qp_b in enumerate(qnodes_bary):
-                x_q = np.dot(qp_b, vertices_Tet[:, 0])
-                y_q = np.dot(qp_b, vertices_Tet[:, 1])
-                z_q = np.dot(qp_b, vertices_Tet[:, 2])
-                # Computing Initial Vector at t = T_min
-                H_integral += np.dot(H_analytical([x_q, y_q, z_q], T_min) , F_Ws[3*i+j](qp_b, dl_Tet)) * qweights[kq]
-            H_integral *= integral_scaling
-            H_0[3*faces_Tet[i]+j] += H_integral
-
-    for j in range(3):
         H_integral = 0
         for kq, qp_b in enumerate(qnodes_bary):
             x_q = np.dot(qp_b, vertices_Tet[:, 0])
             y_q = np.dot(qp_b, vertices_Tet[:, 1])
             z_q = np.dot(qp_b, vertices_Tet[:, 2])
             # Computing Initial Vector at t = T_min
-            H_integral += np.dot(H_analytical([x_q, y_q, z_q], T_min) , F_Ws[12+j](qp_b, dl_Tet)) * qweights[kq]
+            H_integral += np.dot(H_analytical([x_q, y_q, z_q], T_min) , F_Ws[i](qp_b, dl_Tet)) * qweights[kq]
         H_integral *= integral_scaling
-        H_0[3*N2+3*Tet_index+j] += H_integral
+        H_0[faces_Tet[i]] += H_integral
 
 # Setup the Global Mass and Stiffness Matrices as SciPy sparse matrices
-M00_g = sprs.coo_matrix((M00_data, (rows00, columns00)), (N0+N1, N0+N1), dtype='float')
+M00_g = sprs.coo_matrix((M00_data, (rows00, columns00)), (N0, N0), dtype='float')
 M00_g = M00_g.tocsr()
-S01_g = sprs.coo_matrix((S01_data, (rows01, columns01)), (N0+N1, 2*N1+2*N2), dtype='float')
+S01_g = sprs.coo_matrix((S01_data, (rows01, columns01)), (N0, N1), dtype='float')
 S01_g = S01_g.tocsr()
-M11_g = sprs.coo_matrix((M11_data, (rows11, columns11)), (2*N1+2*N2, 2*N1+2*N2), dtype='float')
+M11_g = sprs.coo_matrix((M11_data, (rows11, columns11)), (N1, N1), dtype='float')
 M11_g = M11_g.tocsr()
-S12_g = sprs.coo_matrix((S12_data, (rows12, columns12)), (2*N1+2*N2, 3*N2+3*N3), dtype='float')
+S12_g = sprs.coo_matrix((S12_data, (rows12, columns12)), (N1, N2), dtype='float')
 S12_g = S12_g.tocsr()
-M22_g = sprs.coo_matrix((M22_data, (rows22, columns22)), (3*N2+3*N3, 3*N2+3*N3), dtype='float')
+M22_g = sprs.coo_matrix((M22_data, (rows22, columns22)), (N2, N2), dtype='float')
 M22_g = M22_g.tocsr()
 
 # Some clean up
@@ -1145,23 +659,21 @@ del (rows00, columns00, M00_data, rows01, columns01, S01_data, rows11, columns11
 
 # Computing Initial Vectors
 print("\n\tsolving for initial condition vectors..."); sys.stdout.flush()
-p = np.zeros((number_of_time_steps, N0+N1))
-E = np.zeros((number_of_time_steps, 2*N1+2*N2))
-H = np.zeros((number_of_time_steps, 3*N2+3*N3))
+p = np.zeros((number_of_time_steps, N0))
+E = np.zeros((number_of_time_steps, N1))
+H = np.zeros((number_of_time_steps, N2))
 
+# Computing Initial Vectors
 # Initial p
 for i, v in enumerate(sc.vertices):
     p_0[i] = p_analytical(v, t=0)
-
-for i, e in enumerate(sc[1].simplices):
-    e_vmid = np.mean(sc.vertices[e], axis=0)
-    p_0[N0 + i] = p_analytical(e_vmid, t=0)
 p[0] = p_0
+p0_initial = p[0].copy()
 
 # Initial E and H
 # Compute the right hand side for the boundary condition on E and also compute the boundary
 # coefficients for the boundary condition on H
-bb_E = np.zeros(2*N1b+2*N2b)
+bb_E = np.zeros(N1b)
 H_bc = np.zeros(boundary_faces.shape[0])
 Hbasis_trace_factor = 2
 
@@ -1193,14 +705,9 @@ for index, (Face_index, Face) in enumerate(zip(boundary_face_indices, boundary_f
         zq_phy = np.dot(qp_b, vertices_Face[:, 2])
         bb_integral = np.zeros(3)
         for i in range(3):    # Loop over edges (E boundary basis)
-            for j in range(2):    # Loop over edges (E boundary basis)
-                bb_E[2*boundary_edge_index_map[edge_indices_Face[i]] + j] += (
-                    integral_scaling_2d * np.dot(E_boundary([xq_phy, yq_phy, zq_phy], T_min, boundary_normal), 
-                                                 np.cross(Eb_Ws[2*i+j](qp_b, dl_Face), boundary_normal)) * qweights_2d[kq])
-        for i in range(2):    # Loop over faces (E boundary basis)
-            bb_E[2*N1b + 2*boundary_face_index_map[Face_index] + i] += (
-                integral_scaling_2d * np.dot(E_boundary([xq_phy, yq_phy, zq_phy], T_min, boundary_normal), 
-                                             np.cross(Eb_Ws[6+i](qp_b, dl_Face), boundary_normal)) * qweights_2d[kq])
+            bb_E[boundary_edge_index_map[edge_indices_Face[i]]] += (integral_scaling_2d * 
+                np.dot(E_boundary([xq_phy, yq_phy, zq_phy], T_min, boundary_normal), 
+                        np.cross(Eb_Ws[i](qp_b, dl_Face), boundary_normal)) * qweights_2d[kq])
         H_integral += H_boundary([xq_phy, yq_phy, zq_phy], T_min, boundary_normal) * qweights_2d[kq]
     H_integral *= sc[2].primal_volume[Face_index]/vol_std_tri
     H_bc[index] = sign * H_integral
@@ -1220,15 +727,9 @@ H_bc *= Hbasis_trace_factor
 
 # Setup boundary conditions for computation of initial E
 M11_g_bndry = M11_g.copy()
-bc_zeromatrix_edges11 = sprs.csr_matrix((boundary_edge_indices.shape[0], M11_g.shape[1]), dtype=M11_g.dtype)
-bc_zeromatrix_faces11 = sprs.csr_matrix((boundary_face_indices.shape[0], M11_g.shape[1]), dtype=M11_g.dtype)
-for j in range(2):
-    M11_g_bndry[2*boundary_edge_indices + j] = bc_zeromatrix_edges11
-    M11_g_bndry[2*boundary_edge_indices + j, 2*boundary_edge_indices + j] = 1
-    M11_g_bndry[2*N1 + 2*boundary_face_indices + j] = bc_zeromatrix_faces11
-    M11_g_bndry[2*N1 + 2*boundary_face_indices + j, 2*N1 + 2*boundary_face_indices + j] = 1
-    E_0[2*boundary_edge_indices + j] = E_bc[j:2*N1b:2]
-    E_0[2*N1 + 2*boundary_face_indices + j] = E_bc[2*N1b+j::2]
+M11_g_bndry[boundary_edge_indices] = 0
+M11_g_bndry[boundary_edge_indices, boundary_edge_indices] = 1
+E_0[boundary_edge_indices] = E_bc
 
 # Solve for initial E
 solverM11_bndry = pypard.PyPardisoSolver()
@@ -1236,14 +737,13 @@ solverM11_bndry.set_iparm(34, 4)
 solverM11_bndry.set_iparm(60, 2)
 solverM11_bndry.factorize(M11_g_bndry)
 E[0] = solverM11_bndry.solve(M11_g_bndry, E_0)
+E0_initial = E[0].copy()
 
 # Setup boundary conditions for computation of intial H
 M22_g_bndry = M22_g.copy()
-bc_zeromatrix_faces22 = sprs.csr_matrix((boundary_face_indices.shape[0], M22_g.shape[0]), dtype=M22_g.dtype)
-for i in range(3):
-    M22_g_bndry[3*boundary_face_indices + i] = bc_zeromatrix_faces22
-    M22_g_bndry[3*boundary_face_indices + i, 3*boundary_face_indices + i] = 1
-    H_0[3*boundary_face_indices + i] = H_bc
+M22_g_bndry[boundary_face_indices] = 0
+M22_g_bndry[boundary_face_indices, boundary_face_indices] = 1
+H_0[boundary_face_indices] = H_bc
 
 # Solve for initial H
 solverM22_bndry = pypard.PyPardisoSolver()
@@ -1251,6 +751,7 @@ solverM22_bndry.set_iparm(34, 4)
 solverM22_bndry.set_iparm(60, 2)
 solverM22_bndry.factorize(M22_g_bndry)
 H[0] = solverM22_bndry.solve(M22_g_bndry, H_0)
+H0_initial = H[0].copy()
 
 # Set up solvers
 # Solver for p
@@ -1289,20 +790,11 @@ if use_backward_euler:
     bc_zeromatrix_edges = sprs.csr_matrix((boundary_edge_indices.shape[0], S_LHS.shape[0]), dtype=S_LHS.dtype)
     bc_zeromatrix_faces = sprs.csr_matrix((boundary_face_indices.shape[0], S_LHS.shape[0]), dtype=S_LHS.dtype)
     S_LHS[boundary_vertex_indices] = bc_zeromatrix_vertices
-    S_LHS[N0 + boundary_edge_indices] = bc_zeromatrix_edges
     S_LHS[boundary_vertex_indices, boundary_vertex_indices] = 1
+    S_LHS[N0 + boundary_edge_indices] = bc_zeromatrix_edges
     S_LHS[N0 + boundary_edge_indices, N0 + boundary_edge_indices] = 1
-    for i in range(2):
-        S_LHS[N0 + N1 + 2*boundary_edge_indices + i] = bc_zeromatrix_edges
-        S_LHS[N0 + N1 + 2*boundary_edge_indices + i, 
-              N0 + N1 + 2*boundary_edge_indices + i] = 1
-        S_LHS[N0 + N1 + 2*N1 + 2*boundary_face_indices + i] = bc_zeromatrix_faces
-        S_LHS[N0 + N1 + 2*N1 + 2*boundary_face_indices + i, 
-              N0 + N1 + 2*N1 + 2*boundary_face_indices + i] = 1
-    for i in range(3):
-        S_LHS[N0 + N1 + 2*N1 + 2*N2 + 3*boundary_face_indices + i] = bc_zeromatrix_faces
-        S_LHS[N0 + N1 + 2*N1 + 2*N2 + 3*boundary_face_indices + i, 
-              N0 + N1 + 2*N1 + 2*N2 + 3*boundary_face_indices + i] = 1
+    S_LHS[N0 + N1 + boundary_face_indices] = bc_zeromatrix_faces
+    S_LHS[N0 + N1 + boundary_face_indices, N0 + N1 + boundary_face_indices] = 1
 
     # Setup linear system solver for the solution of E and H
     S_LHS.eliminate_zeros()    # Sparsify again
@@ -1312,7 +804,7 @@ if use_backward_euler:
     pEH_solver.factorize(S_LHS)
 
     for time_step in tqdm.tqdm(range(1, number_of_time_steps)):
-        b_p = np.zeros(N0+N1); b_E = np.zeros(2*N1+2*N2); b_H = np.zeros(3*N2+3*N3)
+        b_p = np.zeros(N0); b_E = np.zeros(N1); b_H = np.zeros(N2)
         for Tet_index, Tet in enumerate(sc[3].simplices):
             vertices_Tet = sc.vertices[Tet]
             vol_phy_tet = sc[3].primal_volume[Tet_index]
@@ -1328,52 +820,28 @@ if use_backward_euler:
                                 for v0, v1, v2 in itrs.combinations(Tet, 3)])
             
             # Computing values of f_p, f_E and f_H at current time step
-            fp_integral = np.zeros(len(vertices_Tet)+len(edges_Tet))
-            fE_integral = np.zeros(2*len(edges_Tet)+2*len(faces_Tet))
-            fH_integral = np.zeros(3*len(faces_Tet)+3*1)
+            fp_integral = np.zeros(len(vertices_Tet))
+            fE_integral = np.zeros(len(edges_Tet))
+            fH_integral = np.zeros(len(faces_Tet))
             for kq, qp_b in enumerate(qnodes_bary):
                 x_q = np.dot(qp_b, vertices_Tet[:, 0])
                 y_q = np.dot(qp_b, vertices_Tet[:, 1])
                 z_q = np.dot(qp_b, vertices_Tet[:, 2])
+                for i in range(6):
+                    fE_integral[i] += np.dot(fE_analytical([x_q, y_q, z_q], (time_step) * dt), 
+                                             E_Ws[i](qp_b, dl_Tet)) * qweights[kq]
                 for i in range(4):
                     fp_integral[i] += np.dot(fp_analytical([x_q, y_q, z_q], (time_step) * dt), 
                                              V_Ws[i](qp_b)) * qweights[kq]
-                for i in range(6):
-                    fp_integral[4+i] += np.dot(fp_analytical([x_q, y_q, z_q], (time_step) * dt), 
-                                             V_Ws[4+i](qp_b)) * qweights[kq]
-
-                for i in range(6):
-                    for j in range(2):
-                        fE_integral[2*i+j] += np.dot(fE_analytical([x_q, y_q, z_q], (time_step) * dt), 
-                                             E_Ws[2*i+j](qp_b, dl_Tet)) * qweights[kq]
-                for i in range(4):
-                    for j in range(2):
-                        fE_integral[12+2*i+j] += np.dot(fE_analytical([x_q, y_q, z_q], (time_step) * dt), 
-                                             E_Ws[12+2*i+j](qp_b, dl_Tet)) * qweights[kq]
-                        
-                for i in range(4):
-                    for j in range(3):
-                        fH_integral[3*i+j] += np.dot(fH_analytical([x_q, y_q, z_q], (time_step) * dt), 
-                                             F_Ws[3*i+j](qp_b, dl_Tet)) * qweights[kq]
-                        
-                for j in range(3):
-                    fH_integral[12+j] += np.dot(fH_analytical([x_q, y_q, z_q], (time_step) * dt), 
-                                            F_Ws[12+j](qp_b, dl_Tet)) * qweights[kq]
+                    fH_integral[i] += np.dot(fH_analytical([x_q, y_q, z_q], (time_step) * dt), 
+                                             F_Ws[i](qp_b, dl_Tet)) * qweights[kq]
                     
             fp_integral *= integral_scaling
+            b_p[Tet] += fp_integral
             fE_integral *= integral_scaling
+            b_E[edges_Tet] += fE_integral
             fH_integral *= integral_scaling
-
-            b_p[Tet] += fp_integral[:4]
-            b_p[N0+edges_Tet] += fp_integral[4:]
-
-            for j in range(2):
-                b_E[2*edges_Tet+j] += fE_integral[j:12:2]
-                b_E[2*N1+2*faces_Tet+j] += fE_integral[12+j::2]
-
-            for j in range(3):
-                b_H[3*faces_Tet+j] += fH_integral[j:12:3]
-                b_H[3*N2+Tet_index+j] += fH_integral[12+j::3]
+            b_H[faces_Tet] += fH_integral
 
         # Setup right hand side intermediate variables
         bp_RHS = b_p + 1/dt*M00_g*p[time_step - 1] 
@@ -1381,7 +849,7 @@ if use_backward_euler:
         bH_RHS = b_H + mu/dt*M22_g*H[time_step - 1]
 
         # Obtain boundary coefficients for E and H
-        bb_E = np.zeros(2*N1b+2*N2b)
+        bb_E = np.zeros(N1b)
         H_bc = np.zeros(boundary_faces.shape[0])
         Hbasis_trace_factor = 2
 
@@ -1414,14 +882,9 @@ if use_backward_euler:
                 yq_phy = np.dot(qp_b, vertices_Face[:, 1])
                 zq_phy = np.dot(qp_b, vertices_Face[:, 2])
                 for i in range(3):    # Loop over edges (E boundary basis)
-                    for j in range(2):    # Loop over edges (E boundary basis)
-                        bb_E[2*boundary_edge_index_map[edge_indices_Face[i]] + j] += (
-                            integral_scaling_2d * np.dot(E_boundary([xq_phy, yq_phy, zq_phy], time_step * dt, boundary_normal), 
-                                                        np.cross(Eb_Ws[2*i+j](qp_b, dl_Face), boundary_normal)) * qweights_2d[kq])
-                for i in range(2):    # Loop over faces (E boundary basis)
-                    bb_E[2*N1b + 2*boundary_face_index_map[Face_index] + i] += (
-                        integral_scaling_2d * np.dot(E_boundary([xq_phy, yq_phy, zq_phy], time_step * dt, boundary_normal), 
-                                                    np.cross(Eb_Ws[6+i](qp_b, dl_Face), boundary_normal)) * qweights_2d[kq])
+                    bb_E[boundary_edge_index_map[edge_indices_Face[i]]] += (integral_scaling_2d * 
+                        np.dot(E_boundary([xq_phy, yq_phy, zq_phy], time_step * dt, boundary_normal), 
+                               np.cross(Eb_Ws[i](qp_b, dl_Face), boundary_normal)) * qweights_2d[kq])
                 H_integral += H_boundary([xq_phy, yq_phy, zq_phy], time_step * dt, boundary_normal) * qweights_2d[kq]
             H_integral *= sc[2].primal_volume[Face_index]/vol_std_tri
             H_bc[index] = sign * H_integral
@@ -1440,27 +903,21 @@ if use_backward_euler:
         H_bc *= Hbasis_trace_factor
 
         # Incorporate boundary conditions in p
-        p_bc = np.array([p_analytical(v, time_step*dt) for v in sc.vertices[boundary_vertex_indices]])
-        
+        p_bc = np.array([p_analytical(v, time_step * dt) for v in sc.vertices[boundary_vertex_indices]])
+
         # Impose boundary conditions on the right hand side at this time step
         bp_RHS[boundary_vertex_indices] = p_bc
-        p_bc = np.array([p_analytical((sc.vertices[e[0]] + sc.vertices[e[1]])/2, time_step*dt) for e in boundary_edges])
-        bp_RHS[N0 + boundary_edge_indices] = p_bc
-
-        for j in range(2):
-            bE_RHS[2*boundary_edge_indices + j] = E_bc[j:2*N1b:2]
-            bE_RHS[2*N1 + 2*boundary_face_indices + j] = E_bc[2*N1b + j::2]
-        for i in range(3):
-            bH_RHS[3*boundary_face_indices + i] = H_bc
+        bE_RHS[boundary_edge_indices] = E_bc
+        bH_RHS[boundary_face_indices] = H_bc
 
         # Setup the right hand side matrix
         b_RHS = np.concatenate((bp_RHS, bE_RHS, bH_RHS))
 
         # Obtain the linear system solution for E and H
         x = pEH_solver.solve(S_LHS, b_RHS)
-        p[time_step] = x[:N0 + N1]
-        E[time_step] = x[N0 + N1:N0 + 3*N1 + 2*N2]
-        H[time_step] = x[N0 + 3*N1 + 2*N2:]
+        p[time_step] = x[:N0]
+        E[time_step] = x[N0:N0 + N1]
+        H[time_step] = x[N0 + N1:]
 
 
 # Crank Nicholson
@@ -1481,17 +938,8 @@ if use_crank_nicholson:
     S_LHS[boundary_vertex_indices, boundary_vertex_indices] = 1
     S_LHS[N0 + boundary_edge_indices] = bc_zeromatrix_edges
     S_LHS[N0 + boundary_edge_indices, N0 + boundary_edge_indices] = 1
-    for i in range(2):
-        S_LHS[N0 + N1 + 2*boundary_edge_indices + i] = bc_zeromatrix_edges
-        S_LHS[N0 + N1 + 2*boundary_edge_indices + i, 
-              N0 + N1 + 2*boundary_edge_indices + i] = 1
-        S_LHS[N0 + N1 + 2*N1 + 2*boundary_face_indices + i] = bc_zeromatrix_faces
-        S_LHS[N0 + N1 + 2*N1 + 2*boundary_face_indices + i, 
-              N0 + N1 + 2*N1 + 2*boundary_face_indices + i] = 1
-    for i in range (3):
-        S_LHS[N0 + N1 + 2*N1 + 2*N2 + 3*boundary_face_indices + i] = bc_zeromatrix_faces
-        S_LHS[N0 + N1 + 2*N1 + 2*N2 + 3*boundary_face_indices + i, 
-              N0 + N1 + 2*N1 + 2*N2 + 3*boundary_face_indices + i] = 1
+    S_LHS[N0 + N1 + boundary_face_indices] = bc_zeromatrix_faces
+    S_LHS[N0 + N1 + boundary_face_indices, N0 + N1 + boundary_face_indices] = 1
 
     # Setup linear system solver for the solution of E and H
     S_LHS.eliminate_zeros()    # Sparsify again
@@ -1501,7 +949,7 @@ if use_crank_nicholson:
     pEH_solver.factorize(S_LHS)
 
     for time_step in tqdm.tqdm(range(1, number_of_time_steps)):
-        b_p = np.zeros(N0+N1); b_E = np.zeros(2*N1+2*N2); b_H = np.zeros(3*N2+3*N3)
+        b_p = np.zeros(N0); b_E = np.zeros(N1); b_H = np.zeros(N2)
         for Tet_index, Tet in enumerate(sc[3].simplices):
             vertices_Tet = sc.vertices[Tet]
             vol_phy_tet = sc[3].primal_volume[Tet_index]
@@ -1517,66 +965,39 @@ if use_crank_nicholson:
                                 for v0, v1, v2 in itrs.combinations(Tet, 3)])
             
             # Computing values of f_p, f_E and f_H at current time step
-            fp_integral = np.zeros(len(vertices_Tet)+len(edges_Tet))
-            fE_integral = np.zeros(2*len(edges_Tet)+2*len(faces_Tet))
-            fH_integral = np.zeros(3*len(faces_Tet)+3*1)
+            fp_integral = np.zeros(len(vertices_Tet))
+            fE_integral = np.zeros(len(edges_Tet))
+            fH_integral = np.zeros(len(faces_Tet))
             for kq, qp_b in enumerate(qnodes_bary):
                 x_q = np.dot(qp_b, vertices_Tet[:, 0])
                 y_q = np.dot(qp_b, vertices_Tet[:, 1])
                 z_q = np.dot(qp_b, vertices_Tet[:, 2])
+                for i in range(6):
+                    fE_integral[i] += np.dot((fE_analytical([x_q, y_q, z_q], (time_step) * dt) +
+                                              fE_analytical([x_q, y_q, z_q], (time_step - 1) * dt)), 
+                                             E_Ws[i](qp_b, dl_Tet)) * qweights[kq]
                 for i in range(4):
-                    fp_integral[i] += np.dot((fp_analytical([x_q, y_q, z_q], (time_step) * dt) + 
+                    fp_integral[i] += np.dot((fp_analytical([x_q, y_q, z_q], (time_step) * dt) +
                                               fp_analytical([x_q, y_q, z_q], (time_step - 1) * dt)), 
-                                              V_Ws[i](qp_b)) * qweights[kq]
-                for i in range(6):
-                    fp_integral[4+i] += np.dot((fp_analytical([x_q, y_q, z_q], (time_step) * dt) + 
-                                               fp_analytical([x_q, y_q, z_q], (time_step - 1) * dt)), 
-                                               V_Ws[4+i](qp_b)) * qweights[kq]
-
-                for i in range(6):
-                    for j in range(2):
-                        fE_integral[2*i+j] += np.dot((fE_analytical([x_q, y_q, z_q], (time_step) * dt) + 
-                                                     fE_analytical([x_q, y_q, z_q], (time_step - 1) * dt)), 
-                                                     E_Ws[2*i+j](qp_b, dl_Tet)) * qweights[kq]
-                for i in range(4):
-                    for j in range(2):
-                        fE_integral[12+2*i+j] += np.dot((fE_analytical([x_q, y_q, z_q], (time_step) * dt) + 
-                                                         fE_analytical([x_q, y_q, z_q], (time_step - 1) * dt)), 
-                                                         E_Ws[12+2*i+j](qp_b, dl_Tet)) * qweights[kq]
-                        
-                for i in range(4):
-                    for j in range(3):
-                        fH_integral[3*i+j] += np.dot((fH_analytical([x_q, y_q, z_q], (time_step) * dt) + 
-                                                     fH_analytical([x_q, y_q, z_q], (time_step - 1) * dt)), 
-                                                     F_Ws[3*i+j](qp_b, dl_Tet)) * qweights[kq]
-                        
-                for j in range(3):
-                        fH_integral[12+j] += np.dot((fH_analytical([x_q, y_q, z_q], (time_step) * dt) + 
-                                                    fH_analytical([x_q, y_q, z_q], (time_step - 1) * dt)), 
-                                                    F_Ws[12+j](qp_b, dl_Tet)) * qweights[kq]
+                                             V_Ws[i](qp_b)) * qweights[kq]
+                    fH_integral[i] += np.dot((fH_analytical([x_q, y_q, z_q], (time_step) * dt) +
+                                              fH_analytical([x_q, y_q, z_q], (time_step - 1) * dt)), 
+                                             F_Ws[i](qp_b, dl_Tet)) * qweights[kq]
                     
             fp_integral *= integral_scaling
+            b_p[Tet] += fp_integral
             fE_integral *= integral_scaling
+            b_E[edges_Tet] += fE_integral
             fH_integral *= integral_scaling
+            b_H[faces_Tet] += fH_integral
 
-            b_p[Tet] += fp_integral[:4]
-            b_p[N0+edges_Tet] += fp_integral[4:]
-
-            for j in range(2):
-                b_E[2*edges_Tet+j] += fE_integral[j:12:2]
-                b_E[2*N1+2*faces_Tet+j] += fE_integral[12+j::2]
-
-            for j in range(3):
-                b_E[3*faces_Tet+j] += fH_integral[j:12:3]
-                b_E[3*N2+Tet_index+j] += fH_integral[12+j::3]
-                
         # Setup right hand side intermediate variables
         bp_RHS = b_p/2 + 1/dt*M00_g*p[time_step - 1] + epsilon*S01_g/2*E[time_step - 1]
         bE_RHS = -b_E/2 + S01_g.T/2*p[time_step - 1] - epsilon/dt*M11_g*E[time_step - 1] - S12_g/2*H[time_step - 1]
         bH_RHS = b_H/2 - S12_g.T/2*E[time_step - 1] + mu/dt*M22_g*H[time_step - 1]
 
         # Obtain boundary coefficients for E and H
-        bb_E = np.zeros(2*N1b+2*N2b)
+        bb_E = np.zeros(N1b)
         H_bc = np.zeros(boundary_faces.shape[0])
         Hbasis_trace_factor = 2
 
@@ -1608,15 +1029,11 @@ if use_crank_nicholson:
                 xq_phy = np.dot(qp_b, vertices_Face[:, 0])
                 yq_phy = np.dot(qp_b, vertices_Face[:, 1])
                 zq_phy = np.dot(qp_b, vertices_Face[:, 2])
-                for i in range(3):    # Loop over edges (E boundary basis)
-                    for j in range(2):    # Loop over edges (E boundary basis)
-                        bb_E[2*boundary_edge_index_map[edge_indices_Face[i]] + j] += (
-                            integral_scaling_2d * np.dot(E_boundary([xq_phy, yq_phy, zq_phy], time_step * dt, boundary_normal), 
-                                                        np.cross(Eb_Ws[2*i+j](qp_b, dl_Face), boundary_normal)) * qweights_2d[kq])
-                for i in range(2):    # Loop over faces (E boundary basis)
-                    bb_E[2*N1b + 2*boundary_face_index_map[Face_index] + i] += (
-                        integral_scaling_2d * np.dot(E_boundary([xq_phy, yq_phy, zq_phy], time_step * dt, boundary_normal), 
-                                                    np.cross(Eb_Ws[6+i](qp_b, dl_Face), boundary_normal)) * qweights_2d[kq])
+                bb_integral = np.zeros(3)
+                for i in range(3):    # Loop over edges (E basis)
+                    bb_E[boundary_edge_index_map[edge_indices_Face[i]]] += (integral_scaling_2d * 
+                        np.dot(E_boundary([xq_phy, yq_phy, zq_phy], time_step * dt, boundary_normal), 
+                               np.cross(Eb_Ws[i](qp_b, dl_Face), boundary_normal)) * qweights_2d[kq])
                 H_integral += H_boundary([xq_phy, yq_phy, zq_phy], time_step * dt, boundary_normal) * qweights_2d[kq]
             H_integral *= sc[2].primal_volume[Face_index]/vol_std_tri
             H_bc[index] = sign * H_integral
@@ -1636,25 +1053,20 @@ if use_crank_nicholson:
 
         # Incorporate boundary conditions in p
         p_bc = np.array([p_analytical(v, time_step * dt) for v in sc.vertices[boundary_vertex_indices]])
-        
+
         # Impose boundary conditions on the right hand side at this time step
         bp_RHS[boundary_vertex_indices] = p_bc
-        p_bc = np.array([p_analytical((sc.vertices[e[0]] + sc.vertices[e[1]])/2, time_step * dt) for e in boundary_edges])
-        bp_RHS[N0 + boundary_edge_indices] = p_bc
+        bE_RHS[boundary_edge_indices] = E_bc
+        bH_RHS[boundary_face_indices] = H_bc
 
-        for j in range(2):
-            bE_RHS[2*boundary_edge_indices + j] = E_bc[j:2*N1b:2]
-            bE_RHS[2*N1 + 2*boundary_face_indices + j] = E_bc[2*N1b + j::2]
-        for i in range(3):
-            bH_RHS[3*boundary_face_indices + i] = H_bc
         # Setup the right hand side matrix
         b_RHS = np.concatenate((bp_RHS, bE_RHS, bH_RHS))
 
         # Obtain the linear system solution for E and H
         x = pEH_solver.solve(S_LHS, b_RHS)
-        p[time_step] = x[:N0 + N1]
-        E[time_step] = x[N0 + N1:N0 + 3*N1 + 2*N2]
-        H[time_step] = x[N0 + 3*N1 + 2*N2:]
+        p[time_step] = x[:N0]
+        E[time_step] = x[N0:N0 + N1]
+        H[time_step] = x[N0 + N1:]
 
 # Implicit Leap-Frog
 if use_leap_frog:  
@@ -1673,19 +1085,10 @@ if use_leap_frog:
     S_LHS[boundary_vertex_indices, boundary_vertex_indices] = 1
     S_LHS[N0 + boundary_edge_indices] = bc_zeromatrix_edges
     S_LHS[N0 + boundary_edge_indices, N0 + boundary_edge_indices] = 1
-    for i in range(2):
-        S_LHS[N0 + N1 + 2*boundary_edge_indices + i] = bc_zeromatrix_edges
-        S_LHS[N0 + N1 + 2*boundary_edge_indices + i, 
-              N0 + N1 + 2*boundary_edge_indices + i] = 1
-        S_LHS[N0 + N1 + 2*N1 + 2*boundary_face_indices + i] = bc_zeromatrix_faces
-        S_LHS[N0 + N1 + 2*N1 + 2*boundary_face_indices + i, 
-              N0 + N1 + 2*N1 + 2*boundary_face_indices + i] = 1
-    for i in range (3):
-        S_LHS[N0 + N1 + 2*N1 + 2*N2 + 3*boundary_face_indices + i] = bc_zeromatrix_faces
-        S_LHS[N0 + N1 + 2*N1 + 2*N2 + 3*boundary_face_indices + i, 
-              N0 + N1 + 2*N1 + 2*N2 + 3*boundary_face_indices + i] = 1
+    S_LHS[N0 + N1 + boundary_face_indices] = bc_zeromatrix_faces
+    S_LHS[N0 + N1 + boundary_face_indices, N0 + N1 + boundary_face_indices] = 1
 
-    # Setup linear system solver for the solution of E and H
+    # Setup linear system solver for the solution of p, E and H
     S_LHS.eliminate_zeros()    # Sparsify again
     pEH_solver = pypard.PyPardisoSolver()    # PyParadiso is a wrapper for Intel MKL's Paradiso
     pEH_solver.set_iparm(34, 4)    # 
@@ -1693,7 +1096,7 @@ if use_leap_frog:
     pEH_solver.factorize(S_LHS)
 
     # Initial right hand sides
-    b0_p = np.zeros(N0+N1); b0_E = np.zeros(2*N1+2*N2); b0_H = np.zeros(3*N2+3*N3)
+    b0_p = np.zeros(N0); b0_E = np.zeros(N1); b0_H = np.zeros(N2)
     for Tet_index, Tet in enumerate(sc[3].simplices):
         vertices_Tet = sc.vertices[Tet]
         vol_phy_tet = sc[3].primal_volume[Tet_index]
@@ -1709,60 +1112,36 @@ if use_leap_frog:
                             for v0, v1, v2 in itrs.combinations(Tet, 3)])
         
         # Computing values of f_p, f_E and f_H at current time step
-        fp_integral = np.zeros(len(vertices_Tet)+len(edges_Tet))
-        fE_integral = np.zeros(2*len(edges_Tet)+2*len(faces_Tet))
-        fH_integral = np.zeros(3*len(faces_Tet)+3*1)
+        fp_integral = np.zeros(len(vertices_Tet))
+        fE_integral = np.zeros(len(edges_Tet))
+        fH_integral = np.zeros(len(faces_Tet))
         for kq, qp_b in enumerate(qnodes_bary):
             x_q = np.dot(qp_b, vertices_Tet[:, 0])
             y_q = np.dot(qp_b, vertices_Tet[:, 1])
             z_q = np.dot(qp_b, vertices_Tet[:, 2])
             for i in range(4):
                 fp_integral[i] += np.dot(fp_analytical([x_q, y_q, z_q], 0), 
-                                         V_Ws[i](qp_b)) * qweights[kq]
+                                            V_Ws[i](qp_b)) * qweights[kq]
+                fH_integral[i] += np.dot(fH_analytical([x_q, y_q, z_q], dt/2), 
+                                            F_Ws[i](qp_b, dl_Tet)) * qweights[kq]
             for i in range(6):
-                fp_integral[4+i] += np.dot(fp_analytical([x_q, y_q, z_q], 0), 
-                                           V_Ws[4+i](qp_b)) * qweights[kq]
-
-            for i in range(6):
-                for j in range(2):
-                    fE_integral[2*i+j] += np.dot(fE_analytical([x_q, y_q, z_q], 0), 
-                                                 E_Ws[2*i+j](qp_b, dl_Tet)) * qweights[kq]
-            for i in range(4):
-                for j in range(2):
-                    fE_integral[12+2*i+j] += np.dot(fE_analytical([x_q, y_q, z_q], 0), 
-                                                    E_Ws[12+2*i+j](qp_b, dl_Tet)) * qweights[kq]
-                    
-            for i in range(4):
-                for j in range(3):
-                    fH_integral[3*i+j] += np.dot(fH_analytical([x_q, y_q, z_q], dt/2), 
-                                                 F_Ws[3*i+j](qp_b, dl_Tet)) * qweights[kq]
-                    
-            for j in range(3):
-                fH_integral[12+j] += np.dot(fH_analytical([x_q, y_q, z_q], dt/2), 
-                                            F_Ws[12+j](qp_b, dl_Tet)) * qweights[kq]
-                
+                fE_integral[i] += np.dot(fE_analytical([x_q, y_q, z_q], 0), 
+                                            E_Ws[i](qp_b, dl_Tet)) * qweights[kq]
+        
         fp_integral *= integral_scaling
+        b0_p[Tet] += fp_integral
         fE_integral *= integral_scaling
+        b0_E[edges_Tet] += fE_integral
         fH_integral *= integral_scaling
+        b0_H[faces_Tet] += fH_integral
 
-        b0_p[Tet] += fp_integral[:4]
-        b0_p[N0+edges_Tet] += fp_integral[4:]
-
-        for j in range(2):
-            b0_E[2*edges_Tet+j] += fE_integral[j:12:2]
-            b0_E[2*N1+2*faces_Tet+j] += fE_integral[12+j::2]
-
-        for j in range(3):
-            b0_H[3*faces_Tet+j] += fH_integral[j:12:3]
-            b0_H[3*N2+Tet_index+j] += fH_integral[12+j::3]
-
-    # Obtain boundary coefficients for E0 and H0
-    bb0_E = np.zeros(2*N1b+2*N2b)
+    # Obtain boundary coefficients for E0
+    bb0_E = np.zeros(N1b)
     H0_bc = np.zeros(boundary_faces.shape[0])
     Hbasis_trace_factor = 2
 
-    # Compute the right hand side for the boundary condition on E and also compute the boundary
-    # coefficients for the boundary condition on H
+    # Compute the right hand side for the boundary condition on E0 and H0
+    H_integral = 0
     for index, (Face_index, Face) in enumerate(zip(boundary_face_indices, boundary_faces)):
         T_index = sc[2].d.T[Face_index].indices[0]
         T = list(sc[3].simplices[T_index])
@@ -1784,23 +1163,17 @@ if use_leap_frog:
         integral_scaling_2d = vol_phy_Face/vol_std_tri
 
         # Right hand side vector: Inner product of the Edge Whitney basis with the boundary function
-        H_integral = 0
         for kq, qp_b in enumerate(qnodes_bary_2d):
             xq_phy = np.dot(qp_b, vertices_Face[:, 0])
             yq_phy = np.dot(qp_b, vertices_Face[:, 1])
             zq_phy = np.dot(qp_b, vertices_Face[:, 2])
             for i in range(3):    # Loop over edges (E boundary basis)
-                for j in range(2):    # Loop over edges (E boundary basis)
-                    bb0_E[2*boundary_edge_index_map[edge_indices_Face[i]] + j] += (
-                        integral_scaling_2d * np.dot(E_boundary([xq_phy, yq_phy, zq_phy], 0, boundary_normal), 
-                                                    np.cross(Eb_Ws[2*i+j](qp_b, dl_Face), boundary_normal)) * qweights_2d[kq])
-            for i in range(2):    # Loop over faces (E boundary basis)
-                bb0_E[2*N1b + 2*boundary_face_index_map[Face_index] + i] += (
-                    integral_scaling_2d * np.dot(E_boundary([xq_phy, yq_phy, zq_phy], 0, boundary_normal), 
-                                                np.cross(Eb_Ws[6+i](qp_b, dl_Face), boundary_normal)) * qweights_2d[kq])
+                bb0_E[boundary_edge_index_map[edge_indices_Face[i]]] += (integral_scaling_2d * 
+                    np.dot(E_boundary([xq_phy, yq_phy, zq_phy], 0, boundary_normal), 
+                            np.cross(Eb_Ws[i](qp_b, dl_Face), boundary_normal)) * qweights_2d[kq])
             H_integral += H_boundary([xq_phy, yq_phy, zq_phy], dt/2, boundary_normal) * qweights_2d[kq]
-        H_integral *= sc[2].primal_volume[Face_index]/vol_std_tri
-        H0_bc[index] = sign * H_integral
+            H_integral *= sc[2].primal_volume[Face_index]/vol_std_tri
+            H0_bc[index] = sign * H_integral
 
     # Solve for the coefficients for the Whitney (Edges) basis for the boundary edges for the E x n 
     # boundary condition
@@ -1815,6 +1188,9 @@ if use_leap_frog:
     # Scale the H coefficients on the boundary by the integral of the face basis on this triangle 
     H0_bc *= Hbasis_trace_factor
 
+    # Incorporate boundary conditions in p
+    p0_bc = np.array([p_analytical(v, 0) for v in sc.vertices[boundary_vertex_indices]])
+
     # Compute right hand side at this time step
     b0_RHS = np.concatenate((b0_p, b0_E, b0_H)) + sprs.bmat([[2/dt*M00_g, 1/2*S01_g, None], 
                                                          [-1/2*S01_g.T, 2/dt*epsilon*M11_g, 1/2*S12_g],
@@ -1822,17 +1198,10 @@ if use_leap_frog:
                                                          format='csr') * np.concatenate((p[0], E[0], H[0]))
 
     # Impose boundary conditions on the right hand side at this time step
-    p0_bc = np.array([p_analytical(v, 0) for v in sc.vertices[boundary_vertex_indices]])
     b0_RHS[boundary_vertex_indices] = p0_bc
-    p0_bc = np.array([p_analytical((sc.vertices[e[0]] + sc.vertices[e[1]])/2, 0) for e in boundary_edges])
-    b0_RHS[N0 + boundary_edge_indices] = p0_bc
-
-    for j in range(2):
-        b0_RHS[N0 + N1 + 2*boundary_edge_indices + j] = E0_bc[j:2*N1b:2]
-        b0_RHS[N0 + N1 + 2*N1 + 2*boundary_face_indices + j] = E0_bc[2*N1b + j::2]
-    for i in range(3):
-        b0_RHS[N0 + N1 + 2*N1 + 2*N2 + 3*boundary_face_indices + i] = H0_bc
-
+    b0_RHS[N0 + boundary_edge_indices] = E0_bc
+    b0_RHS[N0 + N1 + boundary_face_indices] = H0_bc
+    
     S0_LHS = sprs.bmat([[2/dt*M00_g, -epsilon/2*S01_g, None],
                         [-1/2*S01_g.T, 2/dt*epsilon*M11_g, -1/2*S12_g],
                         [None, 1/4*S12_g.T, mu/dt*M22_g]], format='csr')
@@ -1845,18 +1214,8 @@ if use_leap_frog:
     S0_LHS[boundary_vertex_indices, boundary_vertex_indices] = 1
     S0_LHS[N0 + boundary_edge_indices] = bc_zeromatrix_edges
     S0_LHS[N0 + boundary_edge_indices, N0 + boundary_edge_indices] = 1
-    for i in range(2):
-        S0_LHS[N0 + N1 + 2*boundary_edge_indices + i] = bc_zeromatrix_edges
-        S0_LHS[N0 + N1 + 2*boundary_edge_indices + i, 
-               N0 + N1 + 2*boundary_edge_indices + i] = 1
-        S0_LHS[N0 + N1 + 2*N1 + 2*boundary_face_indices + i] = bc_zeromatrix_faces
-        S0_LHS[N0 + N1 + 2*N1 + 2*boundary_face_indices + i, 
-               N0 + N1 + 2*N1 + 2*boundary_face_indices + i] = 1
-    for i in range (3):
-        S0_LHS[N0 + N1 + 2*N1 + 2*N2 + 3*boundary_face_indices + i] = bc_zeromatrix_faces
-        S0_LHS[N0 + N1 + 2*N1 + 2*N2 + 3*boundary_face_indices + i, 
-               N0 + N1 + 2*N1 + 2*N2 + 3*boundary_face_indices + i] = 1
-
+    S0_LHS[N0 + N1 + boundary_face_indices] = bc_zeromatrix_faces
+    S0_LHS[N0 + N1 + boundary_face_indices, N0 + N1 + boundary_face_indices] = 1
     
     # Setup linear system solver for the solution of p0, E0 and H0
     S0_LHS.eliminate_zeros()    # Sparsify again
@@ -1867,12 +1226,12 @@ if use_leap_frog:
 
     # Obtain the linear system solution for p0, E0 at t = 1/2
     x0 = pEH0_solver.solve(S0_LHS, b0_RHS)
-    p[1] = x0[:N0 + N1]
-    E[1] = x0[N0 + N1:N0 + 3*N1 + 2*N2]
-    H[1] = x0[N0 + 3*N1 + 2*N2:]
+    p[1] = x0[:N0]
+    E[1] = x0[N0:N0+N1]
+    H[1] = x0[N0+N1:]
 
     for time_step in tqdm.tqdm(range(2, number_of_time_steps)):
-        b_p = np.zeros(N0+N1); b_E = np.zeros(2*N1+2*N2); b_H = np.zeros(3*N2+3*N3)
+        b_p = np.zeros(N0); b_E = np.zeros(N1); b_H = np.zeros(N2)
         for Tet_index, Tet in enumerate(sc[3].simplices):
             vertices_Tet = sc.vertices[Tet]
             vol_phy_tet = sc[3].primal_volume[Tet_index]
@@ -1888,55 +1247,31 @@ if use_leap_frog:
                                 for v0, v1, v2 in itrs.combinations(Tet, 3)])
             
             # Computing values of f_p, f_E and f_H at current time step
-            fp_integral = np.zeros(len(vertices_Tet)+len(edges_Tet))
-            fE_integral = np.zeros(2*len(edges_Tet)+2*len(faces_Tet))
-            fH_integral = np.zeros(3*len(faces_Tet)+3*1)
+            fp_integral = np.zeros(len(vertices_Tet))
+            fE_integral = np.zeros(len(edges_Tet))
+            fH_integral = np.zeros(len(faces_Tet))
             for kq, qp_b in enumerate(qnodes_bary):
                 x_q = np.dot(qp_b, vertices_Tet[:, 0])
                 y_q = np.dot(qp_b, vertices_Tet[:, 1])
                 z_q = np.dot(qp_b, vertices_Tet[:, 2])
+                for i in range(6):
+                    fE_integral[i] += np.dot(fE_analytical([x_q, y_q, z_q], (time_step-1) * dt), 
+                                             E_Ws[i](qp_b, dl_Tet)) * qweights[kq]
                 for i in range(4):
                     fp_integral[i] += np.dot(fp_analytical([x_q, y_q, z_q], (time_step-1) * dt), 
                                              V_Ws[i](qp_b)) * qweights[kq]
-                for i in range(6):
-                    fp_integral[4+i] += np.dot(fp_analytical([x_q, y_q, z_q], (time_step-1) * dt), 
-                                             V_Ws[4+i](qp_b)) * qweights[kq]
-
-                for i in range(6):
-                    for j in range(2):
-                        fE_integral[2*i+j] += np.dot(fE_analytical([x_q, y_q, z_q], (time_step-1) * dt), 
-                                             E_Ws[2*i+j](qp_b, dl_Tet)) * qweights[kq]
-                for i in range(4):
-                    for j in range(2):
-                        fE_integral[12+2*i+j] += np.dot(fE_analytical([x_q, y_q, z_q], (time_step-1) * dt), 
-                                             E_Ws[12+2*i+j](qp_b, dl_Tet)) * qweights[kq]
-                        
-                for i in range(4):
-                    for j in range(3):
-                        fH_integral[3*i+j] += np.dot(fH_analytical([x_q, y_q, z_q], (time_step-1/2) * dt), 
-                                             F_Ws[3*i+j](qp_b, dl_Tet)) * qweights[kq]
-                        
-                for j in range(3):
-                    fH_integral[12+j] += np.dot(fH_analytical([x_q, y_q, z_q], (time_step-1/2) * dt), 
-                                            F_Ws[12+j](qp_b, dl_Tet)) * qweights[kq]
+                    fH_integral[i] += np.dot(fH_analytical([x_q, y_q, z_q], (time_step-1/2) * dt), 
+                                             F_Ws[i](qp_b, dl_Tet)) * qweights[kq]
                     
             fp_integral *= integral_scaling
+            b_p[Tet] += fp_integral
             fE_integral *= integral_scaling
+            b_E[edges_Tet] += fE_integral
             fH_integral *= integral_scaling
-
-            b_p[Tet] += fp_integral[:4]
-            b_p[N0+edges_Tet] += fp_integral[4:]
-
-            for j in range(2):
-                b_E[2*edges_Tet+j] += fE_integral[j:12:2]
-                b_E[2*N1+2*faces_Tet+j] += fE_integral[12+j::2]
-
-            for j in range(3):
-                b_H[3*faces_Tet+j] += fH_integral[j:12:3]
-                b_H[3*N2+Tet_index+j] += fH_integral[12+j::3]
+            b_H[faces_Tet] += fH_integral
 
         # Obtain boundary coefficients for E and H
-        bb_E = np.zeros(2*N1b+2*N2b)
+        bb_E = np.zeros(N1b)
         H_bc = np.zeros(boundary_faces.shape[0])
         Hbasis_trace_factor = 2
 
@@ -1969,14 +1304,9 @@ if use_leap_frog:
                 yq_phy = np.dot(qp_b, vertices_Face[:, 1])
                 zq_phy = np.dot(qp_b, vertices_Face[:, 2])
                 for i in range(3):    # Loop over edges (E boundary basis)
-                    for j in range(2):    # Loop over edges (E boundary basis)
-                        bb_E[2*boundary_edge_index_map[edge_indices_Face[i]] + j] += (
-                            integral_scaling_2d * np.dot(E_boundary([xq_phy, yq_phy, zq_phy], (time_step-1) * dt, boundary_normal), 
-                                                        np.cross(Eb_Ws[2*i+j](qp_b, dl_Face), boundary_normal)) * qweights_2d[kq])
-                for i in range(2):    # Loop over faces (E boundary basis)
-                    bb_E[2*N1b + 2*boundary_face_index_map[Face_index] + i] += (
-                        integral_scaling_2d * np.dot(E_boundary([xq_phy, yq_phy, zq_phy], (time_step-1) * dt, boundary_normal), 
-                                                    np.cross(Eb_Ws[6+i](qp_b, dl_Face), boundary_normal)) * qweights_2d[kq])
+                    bb_E[boundary_edge_index_map[edge_indices_Face[i]]] += (integral_scaling_2d * 
+                        np.dot(E_boundary([xq_phy, yq_phy, zq_phy], (time_step-1) * dt, boundary_normal), 
+                               np.cross(Eb_Ws[i](qp_b, dl_Face), boundary_normal)) * qweights_2d[kq])
                 H_integral += H_boundary([xq_phy, yq_phy, zq_phy], (time_step-1/2) * dt, boundary_normal) * qweights_2d[kq]
             H_integral *= sc[2].primal_volume[Face_index]/vol_std_tri
             H_bc[index] = sign * H_integral
@@ -1994,6 +1324,9 @@ if use_leap_frog:
         # Scale the H coefficients on the boundary by the integral of the face basis on this triangle 
         H_bc *= Hbasis_trace_factor
 
+        # Incorporate boundary conditions in p
+        p_bc = np.array([p_analytical(v, (time_step-1) * dt) for v in sc.vertices[boundary_vertex_indices]])
+
         # Setup right hand side for intermediate variables p, E and H
         b_RHS = np.concatenate((b_p, b_E, b_H)) + sprs.bmat([[1/dt*M00_g, epsilon/2*S01_g, None], 
                                                              [-1/2*S01_g.T, epsilon/dt*M11_g, 1/2*S12_g], 
@@ -2001,27 +1334,17 @@ if use_leap_frog:
                                                              format='csr') * np.concatenate((p[time_step - 1], 
                                                                                              E[time_step - 1], 
                                                                                              H[time_step - 1]))
-        
-        # Incorporate boundary conditions in p
-        p_bc = np.array([p_analytical(v, (time_step-1)*dt) for v in sc.vertices[boundary_vertex_indices]])
-        
-        # Impose boundary conditions on the right hand side at this time step
-        b_RHS[boundary_vertex_indices] = p_bc
-        p_bc = np.array([p_analytical((sc.vertices[e[0]] + sc.vertices[e[1]])/2, (time_step-1)*dt) for e in boundary_edges])
-        b_RHS[N0 + boundary_edge_indices] = p_bc
 
         # Impose boundary conditions on the right hand side at this time step
-        for j in range(2):
-            b_RHS[N0 + N1 + 2*boundary_edge_indices + j] = E_bc[j:2*N1b:2]
-            b_RHS[N0 + N1 + 2*N1 + 2*boundary_face_indices + j] = E_bc[2*N1b + j::2]
-        for i in range(3):
-            b_RHS[N0 + N1 + 2*N1 + 2*N2 + 3*boundary_face_indices + i] = H_bc
+        b_RHS[boundary_vertex_indices] = p_bc
+        b_RHS[N0 + boundary_edge_indices] = E_bc
+        b_RHS[N0 + N1 + boundary_face_indices] = H_bc
         
         # Obtain the linear system solution for p and E
         x = pEH_solver.solve(S_LHS, b_RHS)
-        p[time_step] = x[:N0 + N1]
-        E[time_step] = x[N0 + N1:N0 + 3*N1 + 2*N2]
-        H[time_step] = x[N0 + 3*N1 + 2*N2:]
+        p[time_step] = x[:N0]
+        E[time_step] = x[N0:N0+N1]
+        H[time_step] = x[N0+N1:]
 
 # Visualization of Solutions and Error Computation
 if plot_solutions == True:
@@ -2058,32 +1381,15 @@ if plot_solutions == True:
                 # Obtain the indices of faces of this tetrahedron
                 faces_Tet = np.array([sc[2].simplex_to_index[pydec.simplex((v0, v1, v2))] 
                                     for v0, v1, v2 in itrs.combinations(Tet, 3)])
-                
+
                 # Obtain the restriction of discrete p to this tetrahedron
-                p_Tet = []
-                for i in range(4):    # Loop over vertices
-                    p_Tet.append(p_plot_time[Tet[i]])
-                for i in range(6):    # Loop over edges
-                    p_Tet.append(p_plot_time[N0 + edges_Tet[i]])
-
+                p_Tet = p_plot_time[Tet]
+                
                 # Obtain the restriction of discrete E to this tetrahedron
-                E_Tet = []
-                for i in range(6):    # Loop over edges
-                    for j in range(2):    # Loop over edges
-                        E_Tet.append(E[plot_time_steps[pts_index]][2*edges_Tet[i] + j])
-
-                for i in range(4):    # Loop over faces
-                    for j in range(2):    # Loop over faces
-                        E_Tet.append(E[plot_time_steps[pts_index]][2*N1 + 2*faces_Tet[i] + j])
+                E_Tet = E_plot_time[edges_Tet]
 
                 # Obtain the restriction of discrete H to this tetrahedron
-                H_Tet = []
-                for i in range(4):    # Loop over faces
-                    for j in range(3):    # Loop over faces
-                        H_Tet.append(H[plot_time_steps[pts_index]][3*faces_Tet[i] + j])
-
-                for j in range(3):    # Loop over tets
-                    H_Tet.append(H[plot_time_steps[pts_index]][3*N2 + 3*Tet_index + j])
+                H_Tet = H_plot_time[faces_Tet]
 
                 # Obtain the interpolated E and H on this tetrahedron
                 bases += [np.dot(vertices_Tet.T, l_base) for l_base in l_bases]
@@ -2209,32 +1515,15 @@ if plot_solutions == True:
                 # Obtain the indices of faces of this tetrahedron
                 faces_Tet = np.array([sc[2].simplex_to_index[pydec.simplex((v0, v1, v2))] 
                                     for v0, v1, v2 in itrs.combinations(Tet, 3)])
-                
+
                 # Obtain the restriction of discrete p to this tetrahedron
-                p_Tet = []
-                for i in range(4):    # Loop over vertices
-                    p_Tet.append(p_plot_time[Tet[i]])
-                for i in range(6):    # Loop over edges
-                    p_Tet.append(p_plot_time[N0 + edges_Tet[i]])
-
+                p_Tet = p_plot_time[Tet]
+                
                 # Obtain the restriction of discrete E to this tetrahedron
-                E_Tet = []
-                for i in range(6):    # Loop over edges
-                    for j in range(2):    # Loop over edges
-                        E_Tet.append(E[plot_time_steps[pts_index]][2*edges_Tet[i] + j])
-
-                for i in range(4):    # Loop over faces
-                    for j in range(2):    # Loop over faces
-                        E_Tet.append(E[plot_time_steps[pts_index]][2*N1 + 2*faces_Tet[i] + j])
+                E_Tet = E_plot_time[edges_Tet]
 
                 # Obtain the restriction of discrete H to this tetrahedron
-                H_Tet = []
-                for i in range(4):    # Loop over faces
-                    for j in range(3):    # Loop over faces
-                        H_Tet.append(H[plot_time_steps[pts_index]][3*faces_Tet[i] + j])
-
-                for j in range(3):    # Loop over tets
-                    H_Tet.append(H[plot_time_steps[pts_index]][3*N2 + 3*Tet_index + j])
+                H_Tet = H_plot_time[faces_Tet]
 
                 # Obtain the interpolated E and H on this tetrahedron
                 bases += [np.dot(vertices_Tet.T, l_base) for l_base in l_bases]
@@ -2356,33 +1645,15 @@ if compute_energy == True:
             # Obtain the indices of faces of this tetrahedron
             faces_Tet = np.array([sc[2].simplex_to_index[pydec.simplex((v0, v1, v2))] 
                                 for v0, v1, v2 in itrs.combinations(Tet, 3)])
-            
-            
-            # Obtain the restriction of discrete p to this tetrahedron
-            p_Tet = []
-            for i in range(4):    # Loop over vertices
-                p_Tet.append(p_solution_time[Tet[i]])
-            for i in range(6):    # Loop over edges
-                p_Tet.append(p_solution_time[N0 + edges_Tet[i]])
 
+            # Obtain the restriction of p to this triangle
+            p_Tet = p_solution_time[Tet]
+            
             # Obtain the restriction of discrete E to this tetrahedron
-            E_Tet = []
-            for i in range(6):    # Loop over edges
-                for j in range(2):    # Loop over edges
-                    E_Tet.append(E_solution_time[2*edges_Tet[i] + j])
-
-            for i in range(4):    # Loop over faces
-                for j in range(2):    # Loop over faces
-                    E_Tet.append(E_solution_time[2*N1 + 2*faces_Tet[i] + j])
+            E_Tet = E_solution_time[edges_Tet]
 
             # Obtain the restriction of discrete H to this tetrahedron
-            H_Tet = []
-            for i in range(4):    # Loop over faces
-                for j in range(3):    # Loop over faces
-                    H_Tet.append(H_solution_time[3*faces_Tet[i] + j])
-
-            for j in range(3):    # Loop over tets
-                H_Tet.append(H_solution_time[3*N2 + 3*Tet_index + j])
+            H_Tet = H_solution_time[faces_Tet]
 
             p_l2norm_Tet = 0; E_l2norm_Tet = 0; H_l2norm_Tet = 0
             p_comp_l2norm_Tet = 0; E_comp_l2norm_Tet = 0; H_comp_l2norm_Tet = 0
@@ -2492,3 +1763,5 @@ if save_data:
 
 
 
+
+    

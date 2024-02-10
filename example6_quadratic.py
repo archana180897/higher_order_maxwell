@@ -30,7 +30,7 @@ epsilon = 2
 mu = 1
 
 # Time Parameters
-dt = 1e-2; T_min = 0; T_max = 2
+dt = 1e-2; T_min = 0; T_max = 3
 number_of_plot_times = 9   # How many time steps to sample for plotting
 filename_prefix = "Maxwells"
 
@@ -40,7 +40,7 @@ mesh_no = 1
 
 # FE Space Choice
 fe_order = "Quadratic"
-p_string = "example2"
+p_string = "example6"
 
 # Computation Choices
 plot_solutions = True
@@ -94,19 +94,18 @@ def E_analytical(v, t):
     x = v[0]
     y = v[1]
     z = v[2]
-    return np.array([np.sin(np.pi*y) * np.sin(np.pi*z) * np.cos(np.pi*t), 
-                     np.sin(np.pi*x) * np.sin(np.pi*z) * np.cos(np.pi*t),
-                     np.sin(np.pi*x) * np.sin(np.pi*y) * np.cos(np.pi*t)])
-
-
+    return np.array([np.sin(y)*np.sin(z)*np.cos(t), 
+                     np.sin(x)*np.sin(z)*np.cos(t),
+                     np.sin(x)*np.sin(y)*np.cos(t)])
+    
 # Analytical H
 def H_analytical(v, t):
     x = v[0]
     y = v[1]
     z = v[2]
-    return np.array([np.sin(np.pi*x) * (np.cos(np.pi*z) - np.cos(np.pi*y)) * np.sin(np.pi*t),
-                     np.sin(np.pi*y) * (np.cos(np.pi*x) - np.cos(np.pi*z)) * np.sin(np.pi*t),
-                     np.sin(np.pi*z) * (np.cos(np.pi*y) - np.cos(np.pi*x)) * np.sin(np.pi*t)])
+    return np.array([np.sin(x)*(np.cos(z) - np.cos(y))*np.sin(t),
+                     np.sin(y)*(np.cos(x) - np.cos(z))*np.sin(t),
+                     np.sin(z)*(np.cos(y) - np.cos(x))*np.sin(t)])
     
 # Analytical f_p
 def fp_analytical(v, t):

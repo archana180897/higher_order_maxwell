@@ -26,7 +26,7 @@ warnings.filterwarnings("ignore")
 # Some common utility variables
 float_tol = 1e-12    # Tolerance for floating point comparisons
 sigma = 1
-epsilon = 2
+epsilon = 1
 mu = 1
 
 # Time Parameters
@@ -40,7 +40,7 @@ mesh_no = 1
 
 # FE Space Choice
 fe_order = "Quadratic"
-p_string = "example2"
+p_string = "example4"
 
 # Computation Choices
 plot_solutions = True
@@ -87,26 +87,22 @@ def p_analytical(v, t):
     x = v[0]
     y = v[1]
     z = v[2]
-    return 0
+    return (np.cos(np.pi*x) + np.cos(np.pi*y)) * np.sin(np.pi*t)
 
 # Analytical E
 def E_analytical(v, t):
     x = v[0]
     y = v[1]
     z = v[2]
-    return np.array([np.sin(np.pi*y) * np.sin(np.pi*z) * np.cos(np.pi*t), 
-                     np.sin(np.pi*x) * np.sin(np.pi*z) * np.cos(np.pi*t),
-                     np.sin(np.pi*x) * np.sin(np.pi*y) * np.cos(np.pi*t)])
-
+    return np.array([np.sin(np.pi*(np.sqrt(2)*t - (x+y))) - np.sin(np.pi*x)*np.cos(np.pi*t), 
+                     -np.sin(np.pi*(np.sqrt(2)*t - (x+y))) - np.sin(np.pi*y)*np.cos(np.pi*t), 0]) 
 
 # Analytical H
 def H_analytical(v, t):
     x = v[0]
     y = v[1]
     z = v[2]
-    return np.array([np.sin(np.pi*x) * (np.cos(np.pi*z) - np.cos(np.pi*y)) * np.sin(np.pi*t),
-                     np.sin(np.pi*y) * (np.cos(np.pi*x) - np.cos(np.pi*z)) * np.sin(np.pi*t),
-                     np.sin(np.pi*z) * (np.cos(np.pi*y) - np.cos(np.pi*x)) * np.sin(np.pi*t)])
+    return np.array([0, 0, -np.sqrt(2)*np.sin(np.pi*(np.sqrt(2)*t - (x+y)))])
     
 # Analytical f_p
 def fp_analytical(v, t):
