@@ -48,7 +48,8 @@ compute_energy = True
 save_data = True
 save_figs = True
 
-# Time Discretization Methods (Default is Crank Nicholson if 0, 1, or 2 not specified)
+# Time Discretization Methods (Default is Crank Nicholson if 0, 1, or 2 not
+# specified)
 # 0: Backward Euler
 # 1: Crank-Nicholson
 # 2: Implicit Leapfrog
@@ -72,8 +73,8 @@ else:
     method_string = "cn"
 
 # Data and Figures
-data_dir = "data/2d/" + p_string + "_" method_string + "_"
-figs_dir = "figs/2d/" + p_string + "_" method_string + "_"
+data_dir = "data/2d/"; data_prestring = p_string + "_" + method_string + "_"
+figs_dir = "figs/2d/"; figs_prestring = p_string + "_" + method_string + "_"
 savefig_options = {"bbox_inches": 'tight'}
 
 # Visualization choices
@@ -86,7 +87,7 @@ def p_analytical(v, t):
     x = v[0]
     y = v[1]
     return 0
-    
+
 # Analytical E
 def E_analytical(v, t):
     x = v[0]
@@ -157,7 +158,6 @@ solution_time_steps = np.sort(list(set(list(
                                   dtype=int), [number_of_time_steps - 1]))))))
 solution_times = solution_time_steps * dt
 
-
 ##  Quadrature Setup  ##
 # Quadrature rule choices
 dims = 2
@@ -211,8 +211,8 @@ def grad_W4(ell_T, dl_T):
 def grad_W5(ell_T, dl_T):
     return 4*(ell_T[2] * dl_T[1] + ell_T[1] * dl_T[2])
 
-# Edge Whitney Basis (order = 2) on a physical simplex
-# Edges
+# Whitney basis (order = 2) on a physical simplex
+# Bases associated with the edges
 def W01_0(ell_Tet,dl_Tet):
     return ell_Tet[0] * (ell_Tet[0]*dl_Tet[1]-ell_Tet[1]*dl_Tet[0])
 def W01_1(ell_Tet,dl_Tet):
@@ -225,7 +225,7 @@ def W12_0(ell_Tet,dl_Tet):
     return ell_Tet[1] * (ell_Tet[1]*dl_Tet[2]-ell_Tet[2]*dl_Tet[1])
 def W12_1(ell_Tet,dl_Tet):
     return ell_Tet[2] * (ell_Tet[1]*dl_Tet[2]-ell_Tet[2]*dl_Tet[1])
-# Triangle
+# Bases associated with the triangle
 def W012_0(ell_Tet,dl_Tet):
     return ell_Tet[2] * (ell_Tet[0]*dl_Tet[1]-ell_Tet[1]*dl_Tet[0])
 def W012_1(ell_Tet,dl_Tet):
@@ -245,7 +245,7 @@ def rot_Wbasis(ell_T, dl_T, a, b, c, t):
                          c * ell_T[0]**a * ell_T[1]**b * ell_T[2]**(c-1) * dl_T[2,1]))
 
 # Rotation of Whitney basis on physical triangle (order = 2)
-# Edges
+# Bases associated with the edges
 def rot_W01_0(ell_Tet,dl_Tet):
     return rot_Wbasis(ell_Tet,dl_Tet,a=2,b=0,c=0,t=1) - rot_Wbasis(ell_Tet,dl_Tet,a=1,b=1,c=0,t=0)
 def rot_W01_1(ell_Tet,dl_Tet):
@@ -258,7 +258,7 @@ def rot_W12_0(ell_Tet,dl_Tet):
     return rot_Wbasis(ell_Tet,dl_Tet,a=0,b=2,c=0,t=2) - rot_Wbasis(ell_Tet,dl_Tet,a=0,b=1,c=1,t=1)
 def rot_W12_1(ell_Tet,dl_Tet):
     return rot_Wbasis(ell_Tet,dl_Tet,a=0,b=1,c=1,t=2) - rot_Wbasis(ell_Tet,dl_Tet,a=0,b=0,c=2,t=1)
-# Triangles
+# Bases associated with the triangle
 def rot_W012_0(ell_Tet,dl_Tet):
     return rot_Wbasis(ell_Tet,dl_Tet,a=1,b=0,c=1,t=1) - rot_Wbasis(ell_Tet,dl_Tet,a=0,b=1,c=1,t=0)
 def rot_W012_1(ell_Tet,dl_Tet):
@@ -694,12 +694,13 @@ M22_g = M22_g.tocsr()
 del (rows00, columns00, M00_data, rows01, columns01, S01_data, rows11, columns11, M11_data,
      rows12, columns12, S12_data, rows22, columns22, M22_data)
 
+# Computing Initial Vectors
+print("\n\tsolving for initial condition vectors..."); sys.stdout.flush()
 p = np.zeros((number_of_time_steps, N0+N1))
 E = np.zeros((number_of_time_steps, 2*N1+2*N2))
 H = np.zeros((number_of_time_steps, 3*N2))
 H_true = np.zeros((number_of_time_steps, 3*N2))
 
-# Computing Initial Vectors
 # Initial p
 for i, v in enumerate(sc.vertices):
     p_0[i] = p_analytical(v, t=0)
@@ -749,7 +750,7 @@ H[0] = solverM22.solve(M22_g, H_0)
 H_true[0] = H[0].copy()
 
 # Loop over timesteps to find the solution
-print("\n\tcomputing solution over the time steps...")
+print("\n\tcomputing solution over the time steps..."); sys.stdout.flush()
 # Backward Euler
 if use_backward_euler:  
     print("\t\tusing Backward Euler with time step of %1.4f"%dt)
@@ -979,7 +980,7 @@ if use_crank_nicholson:
             p_boundary_vertices.append(list((v0+v1)/2))
         p_boundary_vertices = np.array(p_boundary_vertices)
 
-        # Incorporate boundary conditions in RHS
+        # Incorporate boundary conditions in p
         p_bc = np.array([p_analytical(v, time_step * dt) for v in p_boundary_vertices])
 
         # Compute normal trace of analytical solution E on each of the boundaries
@@ -1031,7 +1032,7 @@ if use_leap_frog:
         S_LHS[N0 + N1 + 2*boundary_edge_indices + i] = bc_zeromatrix_edges
         S_LHS[N0 + N1 + 2* boundary_edge_indices + i, N0 +  N1 + 2*boundary_edge_indices + i] = 1
 
-    # Setup linear system solver for the solution of p and E
+    # Setup linear system solver for the solution of p, E and H
     S_LHS.eliminate_zeros()    # Sparsify again
     pEH_solver = pypard.PyPardisoSolver()    # PyParadiso is a wrapper for Intel MKL's Paradiso
     pEH_solver.set_iparm(34, 4)    # 
@@ -1372,7 +1373,7 @@ if plot_solutions == True:
                                 triangles=Triangles, shading='gouraud', edgecolors='k')
 
             # Create an Axes on the right side of ax. The width of cax will be 5%
-            # of ax and the padding between cax and ax will be fixed at 0.05 inch.    
+            # of ax and the padding between cax and ax will be fixed at 0.05 inch.
             # Plot the colorbar only for the last time step
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad="2%")
@@ -1384,7 +1385,7 @@ if plot_solutions == True:
             ax.set_aspect('equal'); ax.axis('off')
             ax.set_title("\nComputed $p$ at $t=$%1.4f"%plot_time, fontsize = 20)
             if save_figs:
-                plt.savefig(pth.join(figs_dir, "p_computed_" + fe_order + "_" + 
+                plt.savefig(pth.join(figs_dir, figs_prestring + "p_computed_" + fe_order + "_" + 
                                         "t%1.4f"%plot_time  + "_" + str(mesh_no) + ".pdf"), **savefig_options)
 
             # Plot the analytical scalar function p on the mesh
@@ -1406,7 +1407,7 @@ if plot_solutions == True:
             ax.set_aspect('equal'); ax.axis('off')
             ax.set_title("\nAnalytical $p$ at $t=$%1.4f"%plot_time, fontsize = 20)
             if save_figs:
-                plt.savefig(pth.join(figs_dir, "p_analytical_" + 
+                plt.savefig(pth.join(figs_dir, figs_prestring + "p_analytical_" + 
                                         "t%1.4f"%plot_time + "_" + str(mesh_no) + ".pdf"), **savefig_options)
                 
             # Plot the interpolated solution E on the mesh
@@ -1417,7 +1418,7 @@ if plot_solutions == True:
             ax.set_aspect('equal'); plt.axis('off')
             ax.set_title("\nComputed $E$ at $t=$%1.4f"%plot_time, fontsize = 20)
             if save_figs:
-                plt.savefig(pth.join(figs_dir, "E_computed_" + fe_order + "_" + 
+                plt.savefig(pth.join(figs_dir, figs_prestring + "E_computed_" + fe_order + "_" + 
                                         "t%1.4f"%plot_time + "_" + str(mesh_no) + ".pdf"),
                         **savefig_options)
 
@@ -1427,9 +1428,9 @@ if plot_solutions == True:
             ax.quiver(bases[::4, 0], bases[::4, 1], E_true_arrows[::4, 0], E_true_arrows[::4, 1],
                 color=(0.3, 0.3, 0.3), scale = 20, width=0.0035)
             ax.set_aspect('equal'); plt.axis('off')
-            ax.set_title("\nAnalytical $E$ at $t=$%1.4f"%plot_time, fontsize = 20)
+            ax.set_title("\nAnalytical $E$ at $t=$%1.4f"%plot_time, fontsize=20)
             if save_figs:
-                plt.savefig(pth.join(figs_dir, "E_analytical_" + 
+                plt.savefig(pth.join(figs_dir, figs_prestring + "E_analytical_" + 
                                         "t%1.4f"%plot_time + "_" + str(mesh_no) + ".pdf"), **savefig_options)
                 
             # Plot the interpolated density field H on the mesh
@@ -1451,7 +1452,7 @@ if plot_solutions == True:
             ax.set_aspect('equal'); ax.axis('off')
             ax.set_title("\nComputed $H$ at $t=$%1.4f"%plot_time_H, fontsize = 20)
             if save_figs:
-                plt.savefig(pth.join(figs_dir, "H_computed_" + fe_order + "_" + 
+                plt.savefig(pth.join(figs_dir, figs_prestring + "H_computed_" + fe_order + "_" + 
                                         "t%1.4f"%plot_time_H + "_" + str(mesh_no) + ".pdf"), **savefig_options)
 
             # Plot the projection of the analytical density field H on the mesh
@@ -1473,9 +1474,9 @@ if plot_solutions == True:
             ax.set_aspect('equal'); ax.axis('off')
             ax.set_title("\nAnalytical $H$ at $t=$%1.4f"%plot_time_H, fontsize = 20)
             if save_figs:
-                plt.savefig(pth.join(figs_dir, "H_analytical_" +
+                plt.savefig(pth.join(figs_dir, figs_prestring + "H_analytical_" +
                                         "t%1.4f"%plot_time_H + "_" + str(mesh_no) + ".pdf"), **savefig_options)
-                
+
     else:
         for pts_index, plot_time_step in enumerate(plot_time_steps):
             plot_time = plot_times[pts_index]
@@ -1512,9 +1513,6 @@ if plot_solutions == True:
                 for i in range(3):
                     p_T.append(p_plot_time[N0 + edges_T[i]])
                 
-                # Obtain the interpolated p on this triangle
-                # p_interp += [p_interpolation(p_T, l_base, dl_T) for l_base in l_bases]
-
                 # Obtain the restriction of discrete E to this triangle
                 E_T = []
                 # Obtain the restriction of discrete u to this triangle
@@ -1588,7 +1586,6 @@ if plot_solutions == True:
             H_true_comp = np.array([H_interpolation(H_true_T[3*T_index:3*T_index + 3], l_base, sc[2].primal_volume[T_index]) 
                                     for l_base in l_bases for T_index in range(N2)])
 
-                
             # Plot the interpolated solution p on the mesh
             # We shall plot the restriction of p to the vertices of the mesh
             plt.figure(); fig = plt.gcf(); ax = plt.gca()
@@ -1597,7 +1594,7 @@ if plot_solutions == True:
                                 triangles=Triangles, shading='gouraud', edgecolors='k')
 
             # Create an Axes on the right side of ax. The width of cax will be 5%
-            # of ax and the padding between cax and ax will be fixed at 0.05 inch.    
+            # of ax and the padding between cax and ax will be fixed at 0.05 inch.
             # Plot the colorbar only for the last time step
             divider = make_axes_locatable(ax)
             cax = divider.append_axes("right", size="5%", pad="2%")
@@ -1609,7 +1606,7 @@ if plot_solutions == True:
             ax.set_aspect('equal'); ax.axis('off')
             ax.set_title("\nComputed $p$ at $t=$%1.4f"%plot_time, fontsize = 20)
             if save_figs:
-                plt.savefig(pth.join(figs_dir, "p_computed_" + fe_order + "_" + 
+                plt.savefig(pth.join(figs_dir, figs_prestring + "p_computed_" + fe_order + "_" + 
                                         "t%1.4f"%plot_time  + "_" + str(mesh_no) + ".pdf"), **savefig_options)
 
             # Plot the analytical scalar function p on the mesh
@@ -1631,7 +1628,7 @@ if plot_solutions == True:
             ax.set_aspect('equal'); ax.axis('off')
             ax.set_title("\nAnalytical $p$ at $t=$%1.4f"%plot_time, fontsize = 20)
             if save_figs:
-                plt.savefig(pth.join(figs_dir, "p_analytical_" + 
+                plt.savefig(pth.join(figs_dir, figs_prestring + "p_analytical_" + 
                                         "t%1.4f"%plot_time + "_" + str(mesh_no) + ".pdf"), **savefig_options)
                 
             # Plot the interpolated solution E on the mesh
@@ -1642,7 +1639,7 @@ if plot_solutions == True:
             ax.set_aspect('equal'); plt.axis('off')
             ax.set_title("\nComputed $E$ at $t=$%1.4f"%plot_time, fontsize = 20)
             if save_figs:
-                plt.savefig(pth.join(figs_dir, "E_computed_" + fe_order + "_" + 
+                plt.savefig(pth.join(figs_dir, figs_prestring + "E_computed_" + fe_order + "_" + 
                                         "t%1.4f"%plot_time + "_" + str(mesh_no) + ".pdf"),
                         **savefig_options)
 
@@ -1652,9 +1649,9 @@ if plot_solutions == True:
             ax.quiver(bases[::4, 0], bases[::4, 1], E_true_arrows[::4, 0], E_true_arrows[::4, 1],
                 color=(0.3, 0.3, 0.3), scale = 20, width=0.0035)
             ax.set_aspect('equal'); plt.axis('off')
-            ax.set_title("\nAnalytical $E$ at $t=$%1.4f"%plot_time, fontsize = 20)
+            ax.set_title("\nAnalytical $E$ at $t=$%1.4f"%plot_time, fontsize=20)
             if save_figs:
-                plt.savefig(pth.join(figs_dir, "E_analytical_" + 
+                plt.savefig(pth.join(figs_dir, figs_prestring + "E_analytical_" + 
                                         "t%1.4f"%plot_time + "_" + str(mesh_no) + ".pdf"), **savefig_options)
                 
             # Plot the interpolated density field H on the mesh
@@ -1676,7 +1673,7 @@ if plot_solutions == True:
             ax.set_aspect('equal'); ax.axis('off')
             ax.set_title("\nComputed $H$ at $t=$%1.4f"%plot_time, fontsize = 20)
             if save_figs:
-                plt.savefig(pth.join(figs_dir, "H_computed_" + fe_order + "_" + 
+                plt.savefig(pth.join(figs_dir, figs_prestring + "H_computed_" + fe_order + "_" + 
                                         "t%1.4f"%plot_time + "_" + str(mesh_no) + ".pdf"), **savefig_options)
 
             # Plot the projection of the analytical density field H on the mesh
@@ -1698,12 +1695,12 @@ if plot_solutions == True:
             ax.set_aspect('equal'); ax.axis('off')
             ax.set_title("\nAnalytical $H$ at $t=$%1.4f"%plot_time, fontsize = 20)
             if save_figs:
-                plt.savefig(pth.join(figs_dir, "H_analytical_" +
+                plt.savefig(pth.join(figs_dir, figs_prestring + "H_analytical_" +
                                         "t%1.4f"%plot_time + "_" + str(mesh_no) + ".pdf"), **savefig_options)
-            
+
 
 if compute_energy == True:
-    print("\n\tcomputing l2 norms and l2 energy over time steps..."); sys.stdout.flush()
+    print("\n\tcomputing L2 norms and L2 energy over time steps..."); sys.stdout.flush()
     for pts_index, solution_time_step in enumerate(tqdm.tqdm(solution_time_steps)):
         solution_time = solution_times[pts_index]
 
@@ -1795,9 +1792,9 @@ if compute_energy == True:
         p_comp_norm_L2.append(np.sqrt(p_comp_l2norm))
         E_comp_norm_L2.append(np.sqrt(E_comp_l2norm))
         H_comp_norm_L2.append(np.sqrt(H_comp_l2norm))
-        L2_energy.append(p_l2norm + E_l2norm + H_l2norm)
-        comp_L2_energy.append(p_comp_l2norm + E_comp_l2norm + H_comp_l2norm)
-                                   
+        L2_energy.append(p_l2norm + epsilon*E_l2norm + mu*H_l2norm)
+        comp_L2_energy.append(p_comp_l2norm + epsilon*E_comp_l2norm + mu*H_comp_l2norm)
+
 p_error_L2 = np.array(p_error_L2); E_error_L2 = np.array(E_error_L2); H_error_L2 = np.array(H_error_L2)
 p_norm_L2 = np.array(p_norm_L2); E_norm_L2 = np.array(E_norm_L2); H_norm_L2 = np.array(H_norm_L2)
 p_comp_norm_L2 = np.array(p_comp_norm_L2); E_comp_norm_L2 = np.array(E_comp_norm_L2); H_comp_norm_L2 = np.array(H_comp_norm_L2)
@@ -1821,38 +1818,38 @@ print("L2 Energy of computed fields: ", comp_L2_energy)
 
 # Save data
 if save_data:
-    np.savetxt(pth.join(data_dir , "pl2analytical_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "pl2analytical_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                p_norm_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "El2analytical_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "El2analytical_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                E_norm_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "Hl2analytical_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "Hl2analytical_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                H_norm_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "pl2computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "pl2computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                p_comp_norm_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "El2computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "El2computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                E_comp_norm_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "Hl2computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "Hl2computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                H_comp_norm_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "pl2error_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "pl2error_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                p_error_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "El2error_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "El2error_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                E_error_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "Hl2error_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "Hl2error_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                H_error_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "plot_times.txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "plot_times.txt"), 
                plot_times, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "energy_analytical_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "energy_analytical_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                L2_energy, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "energy_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "energy_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                comp_L2_energy, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "solution_times.txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "solution_times.txt"), 
                solution_times, fmt="%1.16e")
 
-    np.savetxt(pth.join(data_dir , "p_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "p_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                p, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "E_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "E_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                E, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "H_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "H_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                H, fmt="%1.16e")
 
 

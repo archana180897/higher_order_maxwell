@@ -32,7 +32,7 @@ mu = 1
 # Time Parameters
 dt = 1e-2; T_min = 0; T_max = 2
 number_of_plot_times = 9   # How many time steps to sample for plotting
-filename_prefix = "Maxwell's"
+filename_prefix = "Maxwells"
 
 # Meshes
 mesh_dir = "meshes/unit_cube/"
@@ -73,8 +73,8 @@ else:
     method_string = "cn"
 
 # Data and Figures
-data_dir = "data/3d/" + p_string + "_" method_string + "_"
-figs_dir = "figs/3d/" + p_string + "_" method_string + "_"
+data_dir = "data/3d/"; data_prestring = p_string + "_" + method_string + "_"
+figs_dir = "figs/3d/"; figs_prestring = p_string + "_" + method_string + "_"
 savefig_options = {"bbox_inches": 'tight'}
 
 # Visualization choices
@@ -133,11 +133,13 @@ def fH_analytical(v, t):
 boundary_normals = [np.array([-1, 0, 0]), np.array([1, 0, 0]), np.array([0, -1, 0]), np.array([0, 1, 0]), 
                     np.array([0, 0, -1]), np.array([0, 0, 1])]
 
-# Cross product of the Analytical vector field E with the outward normal to each of the boundary faces
+# Cross product of the Analytical vector field E with the outward normal to
+# each of the boundary faces
 def E_boundary(v, t, normal):
     return np.cross(E_analytical(v, t), normal)
 
-# Dot product of the Analytical vector field H with the outward normal to each of the boundary faces
+# Dot product of the Analytical vector field H with the outward normal to each
+# of the boundary faces
 def H_boundary(v, t, normal):
     return np.dot(H_analytical(v, t), normal)
 
@@ -151,20 +153,23 @@ computation_times = np.arange(0, number_of_time_steps) * dt
 if number_of_time_steps < number_of_plot_times:
     number_of_plot_times = number_of_time_steps    # For consistency
 if use_leap_frog == True:
-    plot_time_steps = np.sort(list(set(list(np.concatenate((np.arange(0, number_of_time_steps, 
-                                                                  (number_of_time_steps + 1)/(number_of_plot_times - 1), 
-                                                                  dtype=int), [number_of_time_steps - 1]))))))
+    plot_time_steps = np.sort(list(set(list(
+        np.concatenate((np.arange(0, number_of_time_steps, 
+                                      (number_of_time_steps + 1)/(number_of_plot_times - 1), 
+                                      dtype=int), [number_of_time_steps - 1]))))))
     plot_times =  np.concatenate(([0],(plot_time_steps[1:] - 0.5) * dt))
     plot_times_H = plot_time_steps * dt
 else:
-    plot_time_steps = np.sort(list(set(list(np.concatenate((np.arange(0, number_of_time_steps, 
-                                                                  (number_of_time_steps + 1)/(number_of_plot_times - 1), 
-                                                                  dtype=int), [number_of_time_steps - 1]))))))
+    plot_time_steps = np.sort(list(set(list(
+        np.concatenate((np.arange(0, number_of_time_steps, 
+                                      (number_of_time_steps + 1)/(number_of_plot_times - 1), 
+                                      dtype=int), [number_of_time_steps - 1]))))))
     plot_times = plot_time_steps * dt
 
-solution_time_steps = np.sort(list(set(list(np.concatenate((np.arange(0, number_of_time_steps, 
-                                                                  (number_of_time_steps + 1)/(number_of_time_steps - 1), 
-                                                                  dtype=int), [number_of_time_steps - 1]))))))
+solution_time_steps = np.sort(list(set(list(
+    np.concatenate((np.arange(0, number_of_time_steps, 
+                                  (number_of_time_steps + 1)/(number_of_time_steps - 1), 
+                                  dtype=int), [number_of_time_steps - 1]))))))
 solution_times = solution_time_steps * dt
 
 ##  Quadrature Setup  ##
@@ -230,7 +235,7 @@ def grad_W2(dl_T):
 def grad_W3(dl_T):
     return dl_T[3]
 
-# Edge Whitney Basis (order = 1) on a physical simplex
+# Edge Whitney basis (order = 1) on a physical simplex
 def E_W01(ell_Tet,dl_Tet):
     return(ell_Tet[0]*dl_Tet[1]-ell_Tet[1]*dl_Tet[0])
 def E_W02(ell_Tet,dl_Tet):
@@ -244,7 +249,7 @@ def E_W13(ell_Tet,dl_Tet):
 def E_W23(ell_Tet,dl_Tet):
     return(ell_Tet[2]*dl_Tet[3]-ell_Tet[3]*dl_Tet[2])
 
-# Curl of Whitney basis (order = 1)
+# Curl of Edge Whitney basis (order = 1)
 def curl_E_W01(dl_Tet):
     return 2 * np.cross(dl_Tet[0],dl_Tet[1])
 def curl_E_W02(dl_Tet):
@@ -280,7 +285,7 @@ def div_F_Wbasis(ell_Tet,dl_Tet,a,b,c,d,s,t):
                     (d*(ell_Tet[0]**a)*(ell_Tet[1]**b)*(ell_Tet[2]**c)*(ell_Tet[3]**(d-1))*dl_Tet[3])) , dl_Tet[s])
     return np.dot(val,dl_Tet[t])
 
-# Divergence of Whitney basis on physical tetrahedron
+# Divergence of Face Whitney basis on physical tetrahedron
 def div_F_W012(ell_Tet,dl_Tet):
     return div_F_Wbasis(ell_Tet,dl_Tet,1,0,0,0,1,2) - div_F_Wbasis(ell_Tet,dl_Tet,0,1,0,0,0,2) + div_F_Wbasis(ell_Tet,dl_Tet,0,0,1,0,0,1)
 def div_F_W013(ell_Tet,dl_Tet):
@@ -581,7 +586,7 @@ for Tet_index, Tet in enumerate(tqdm.tqdm(sc[3].simplices)):
     # Obtain the indices of faces of this tetrahedron
     faces_Tet = np.array([sc[2].simplex_to_index[pydec.simplex((v0, v1, v2))] 
                         for v0, v1, v2 in itrs.combinations(Tet, 3)])
-    
+
     # Obtain the local mass and stiffness matrices
     M00 = Mass_00(Tet, Tet_index)
     S01 = Stiff_01(Tet, Tet_index)
@@ -668,7 +673,7 @@ for i, v in enumerate(sc.vertices):
     p_0[i] = p_analytical(v, t=0)
 p[0] = p_0
 p0_initial = p[0].copy()
- 
+
 # Initial E and H
 # Compute the right hand side for the boundary condition on E and also compute the boundary
 # coefficients for the boundary condition on H
@@ -1355,7 +1360,6 @@ if plot_solutions == True:
             print("\t\tt = %1.3f"%plot_time)
 
             # Visualize the interpolated vector field at this point in barycentric coordinates on each tetrahedron
-            # l_bases = [1/4, 1/4, 1/4, 1/4]
             l_bases = np.array([[1/4, 1/4, 1/4, 1/4], [1/2, 1/6, 1/6, 1/6], [1/6, 1/2, 1/6, 1/6], [1/6, 1/6, 1/2, 1/6], 
                                 [1/6, 1/6, 1/6, 1/2]])
 
@@ -1423,12 +1427,11 @@ if plot_solutions == True:
                 p_l2error_Tet *= integral_scaling
                 E_l2error_Tet *= integral_scaling
                 H_l2error_Tet *= integral_scaling
-            
+
                 p_l2error += p_l2error_Tet
                 E_l2error += E_l2error_Tet
                 H_l2error += H_l2error_Tet
                 
-
             p_error_L2.append(np.sqrt(p_l2error))
             E_error_L2.append(np.sqrt(E_l2error))
             H_error_L2.append(np.sqrt(H_l2error))
@@ -1440,7 +1443,7 @@ if plot_solutions == True:
 
             # Obtain the analytical scalar field for E at the interpolation point
             H_true_arrows = np.array([H_analytical([x_phy, y_phy, z_phy], plot_time_H) for x_phy, y_phy, z_phy in bases])
-            
+
             # Plot the interpolated solution E on the mesh
             mlab.figure(size=(1024,768), bgcolor=(1, 1, 1))
             mlab.triangular_mesh(boundary_vertices[:, 0], boundary_vertices[:, 1], boundary_vertices[:, 2],
@@ -1449,7 +1452,7 @@ if plot_solutions == True:
             mlab.view(**camera_view) 
             # mlab.title("Computed solution for E at t=%1.4f"%plot_time)
             if save_figs:
-                mlab.savefig(pth.join(figs_dir, "E_computed_" + fe_order + "_" + 
+                mlab.savefig(pth.join(figs_dir, figs_prestring + "E_computed_" + fe_order + "_" + 
                                         "t%1.4f"%plot_time + "_" + str(mesh_no) + ".png"))
 
             # Plot the analytical vector field E on the mesh
@@ -1460,7 +1463,7 @@ if plot_solutions == True:
             mlab.view(**camera_view) 
             # mlab.title("Analytical solution for E at t=%1.4f"%plot_time)
             if save_figs:
-                mlab.savefig(pth.join(figs_dir, "E_analytical_" + "_" + 
+                mlab.savefig(pth.join(figs_dir, figs_prestring + "E_analytical_" + "_" + 
                                         "t%1.4f"%plot_time + "_" + str(mesh_no) + ".png"))
 
             # Plot the interpolated solution H on the mesh
@@ -1471,7 +1474,7 @@ if plot_solutions == True:
             mlab.view(**camera_view) 
             # mlab.title("Computed solution for H at t=%1.4f"%plot_time)
             if save_figs:
-                mlab.savefig(pth.join(figs_dir, "H_computed_" + fe_order + "_" +
+                mlab.savefig(pth.join(figs_dir, figs_prestring + "H_computed_" + fe_order + "_" +
                                         "t%1.4f"%plot_time_H + "_" + str(mesh_no) + ".png"))
 
             # Plot the analytical vector field H on the mesh
@@ -1482,9 +1485,9 @@ if plot_solutions == True:
             mlab.view(**camera_view) 
             # mlab.title("Analytical solution for H at t=%1.4f"%plot_time)
             if save_figs:
-                mlab.savefig(pth.join(figs_dir, "H_analytical_" + "_" + 
+                mlab.savefig(pth.join(figs_dir, figs_prestring + "H_analytical_" + "_" + 
                                         "t%1.4f"%plot_time_H + "_" + str(mesh_no) + ".png"))
-                
+
     else:
         for pts_index, plot_time_step in enumerate(plot_time_steps):
             plot_time = plot_times[pts_index]
@@ -1558,12 +1561,11 @@ if plot_solutions == True:
                 p_l2error_Tet *= integral_scaling
                 E_l2error_Tet *= integral_scaling
                 H_l2error_Tet *= integral_scaling
-            
+
                 p_l2error += p_l2error_Tet
                 E_l2error += E_l2error_Tet
                 H_l2error += H_l2error_Tet
                 
-
             p_error_L2.append(np.sqrt(p_l2error))
             E_error_L2.append(np.sqrt(E_l2error))
             H_error_L2.append(np.sqrt(H_l2error))
@@ -1584,7 +1586,7 @@ if plot_solutions == True:
             mlab.view(**camera_view) 
             # mlab.title("Computed solution for E at t=%1.4f"%plot_time)
             if save_figs:
-                mlab.savefig(pth.join(figs_dir, "E_computed_" + fe_order + "_" + 
+                mlab.savefig(pth.join(figs_dir, figs_prestring + "E_computed_" + fe_order + "_" + 
                                         "t%1.4f"%plot_time + "_" + str(mesh_no) + ".png"))
 
             # Plot the analytical vector field E on the mesh
@@ -1595,7 +1597,7 @@ if plot_solutions == True:
             mlab.view(**camera_view) 
             # mlab.title("Analytical solution for E at t=%1.4f"%plot_time)
             if save_figs:
-                mlab.savefig(pth.join(figs_dir, "E_analytical_" + "_" + 
+                mlab.savefig(pth.join(figs_dir, figs_prestring + "E_analytical_" + "_" + 
                                         "t%1.4f"%plot_time + "_" + str(mesh_no) + ".png"))
 
             # Plot the interpolated solution H on the mesh
@@ -1606,7 +1608,7 @@ if plot_solutions == True:
             mlab.view(**camera_view) 
             # mlab.title("Computed solution for H at t=%1.4f"%plot_time)
             if save_figs:
-                mlab.savefig(pth.join(figs_dir, "H_computed_" + fe_order + "_" +
+                mlab.savefig(pth.join(figs_dir, figs_prestring + "H_computed_" + fe_order + "_" +
                                         "t%1.4f"%plot_time + "_" + str(mesh_no) + ".png"))
 
             # Plot the analytical vector field H on the mesh
@@ -1617,11 +1619,11 @@ if plot_solutions == True:
             mlab.view(**camera_view) 
             # mlab.title("Analytical solution for H at t=%1.4f"%plot_time)
             if save_figs:
-                mlab.savefig(pth.join(figs_dir, "H_analytical_" + "_" + 
+                mlab.savefig(pth.join(figs_dir, figs_prestring + "H_analytical_" + "_" + 
                                         "t%1.4f"%plot_time + "_" + str(mesh_no) + ".png"))
-        
+
 if compute_energy == True:
-    print("\n\tcomputing l2 norms and l2 energy over time steps..."); sys.stdout.flush()
+    print("\n\tcomputing L2 norms and L2 energy over time steps..."); sys.stdout.flush()
     for pts_index, solution_time_step in enumerate(tqdm.tqdm(solution_time_steps)):
         solution_time = solution_times[pts_index]
 
@@ -1705,63 +1707,62 @@ if compute_energy == True:
         H_comp_norm_L2.append(np.sqrt(H_comp_l2norm))
         L2_energy.append(p_l2norm + epsilon*E_l2norm + mu*H_l2norm)
         comp_L2_energy.append(p_comp_l2norm + epsilon*E_comp_l2norm + mu*H_comp_l2norm)
-                
+
 p_error_L2 = np.array(p_error_L2); E_error_L2 = np.array(E_error_L2); H_error_L2 = np.array(H_error_L2)
 p_norm_L2 = np.array(p_norm_L2); E_norm_L2 = np.array(E_norm_L2); H_norm_L2 = np.array(H_norm_L2)
 p_comp_norm_L2 = np.array(p_comp_norm_L2); E_comp_norm_L2 = np.array(E_comp_norm_L2); H_comp_norm_L2 = np.array(H_comp_norm_L2)
-L2_energy = np.array(L2_energy); comp_L2_energy = np.array(comp_L2_energy) 
+L2_energy = np.array(L2_energy); comp_L2_energy = np.array(comp_L2_energy)
 
 # Print errors and parameters
-# print("Mesh parmeter h: ", mesh_parameter)
-print("\nL2 norm of analytical scalar field p: ", p_norm_L2); sys.stdout.flush()
-print("L2 norm of computed scalar field p: ", p_comp_norm_L2); sys.stdout.flush()
-print("L2 error in scalar field E: ", p_error_L2); sys.stdout.flush()
+print("\nL2 norm of analytical scalar field p: ", p_norm_L2)
+print("L2 norm of computed scalar field p: ", p_comp_norm_L2)
+print("L2 error in scalar field E: ", p_error_L2)
 
-print("\nL2 norm of analytical vector field E: ", E_norm_L2); sys.stdout.flush()
-print("L2 norm of computed vector field E: ", E_comp_norm_L2); sys.stdout.flush()
-print("L2 error in vector field E: ", E_error_L2); sys.stdout.flush()
+print("\nL2 norm of analytical vector field E: ", E_norm_L2)
+print("L2 norm of computed vector field E: ", E_comp_norm_L2)
+print("L2 error in vector field E: ", E_error_L2)
 
-print("\nL2 norm of analytical vector field H: ", H_norm_L2); sys.stdout.flush()
-print("L2 norm of computed vector field H: ", H_comp_norm_L2); sys.stdout.flush()
-print("L2 error in vector field H: ", H_error_L2); sys.stdout.flush()
+print("\nL2 norm of analytical vector field H: ", H_norm_L2)
+print("L2 norm of computed vector field H: ", H_comp_norm_L2)
+print("L2 error in vector field H: ", H_error_L2)
 
-print("\nL2 Energy of analytical fields: ", L2_energy); sys.stdout.flush()
-print("L2 Energy of computed fields: ", comp_L2_energy); sys.stdout.flush()
+print("\nL2 Energy of analytical fields: ", L2_energy)
+print("L2 Energy of computed fields: ", comp_L2_energy)
 
 # Save data
 if save_data:
-    np.savetxt(pth.join(data_dir , "pl2analytical_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "pl2analytical_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                p_norm_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "El2analytical_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "El2analytical_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                E_norm_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "Hl2analytical_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "Hl2analytical_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                H_norm_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "pl2computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "pl2computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                p_comp_norm_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "El2computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "El2computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                E_comp_norm_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "Hl2computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "Hl2computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                H_comp_norm_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "pl2error_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "pl2error_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                p_error_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "El2error_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "El2error_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                E_error_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "Hl2error_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "Hl2error_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                H_error_L2, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "plot_times.txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "plot_times.txt"), 
                plot_times, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "energy_analytical_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "energy_analytical_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                L2_energy, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "energy_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "energy_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                comp_L2_energy, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "solution_times.txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "solution_times.txt"), 
                solution_times, fmt="%1.16e")
-    
-    np.savetxt(pth.join(data_dir , "p_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+
+    np.savetxt(pth.join(data_dir, data_prestring + "p_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                p, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "E_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "E_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                E, fmt="%1.16e")
-    np.savetxt(pth.join(data_dir , "H_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
+    np.savetxt(pth.join(data_dir, data_prestring + "H_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                H, fmt="%1.16e")
 
 

@@ -625,7 +625,7 @@ H[0] = solverM22.solve(M22_g, H_0)
 H_true[0] = H[0].copy()
 
 # Loop over timesteps to find the solution
-print("\n\tcomputing solution over the time steps...")
+print("\n\tcomputing solution over the time steps..."); sys.stdout.flush()
 # Backward Euler
 if use_backward_euler:  
     print("\t\tusing Backward Euler with time step of %1.4f"%dt)
@@ -910,7 +910,7 @@ if use_leap_frog:
     b0_RHS[N0 + boundary_top_edges] = E0_top_boundary
     b0_RHS[N0 + boundary_bottom_edges] = E0_bottom_boundary
 
-    S0_LHS = sprs.bmat([[2/dt*M00_g, -1/2*S01_g, None],
+    S0_LHS = sprs.bmat([[2/dt*M00_g, -epsilon/2*S01_g, None],
                         [-1/2*S01_g.T, 2/dt*epsilon*M11_g, -1/2*S12_g],
                         [None, 1/4*S12_g.T, mu/dt*M22_g]], format='csr')
 
@@ -1147,7 +1147,7 @@ if plot_solutions == True:
             cbar.formatter.set_powerlimits((0, 0))
             cbar.formatter.set_scientific(True)
             cbar.formatter.set_useMathText(True)
-            
+
             ax.set_aspect('equal'); ax.axis('off')
             ax.set_title("\nAnalytical $p$ at $t=$%1.4f"%plot_time, fontsize = 20)
             if save_figs:
@@ -1220,7 +1220,7 @@ if plot_solutions == True:
             if save_figs:
                 plt.savefig(pth.join(figs_dir, figs_prestring + "H_analytical_" +
                                         "t%1.4f"%plot_time_H + "_" + str(mesh_no) + ".pdf"), **savefig_options)
-            
+
     else:
         for pts_index, plot_time_step in enumerate(plot_time_steps):
             plot_time = plot_times[pts_index]
@@ -1236,7 +1236,6 @@ if plot_solutions == True:
             p_plot_time = p[plot_time_steps[pts_index]]
             E_plot_time = E[plot_time_steps[pts_index]]
             H_plot_time = H[plot_time_steps[pts_index]]
-            # H_T = np.zeros(N2); H_true_T = np.zeros(N2)
             H_true_T = H_true[plot_time_step]
             H_true_comp = np.zeros(N2)
 
@@ -1354,7 +1353,7 @@ if plot_solutions == True:
             cbar.formatter.set_powerlimits((0, 0))
             cbar.formatter.set_scientific(True)
             cbar.formatter.set_useMathText(True)
-            
+
             ax.set_aspect('equal'); ax.axis('off')
             ax.set_title("\nAnalytical $p$ at $t=$%1.4f"%plot_time, fontsize = 20)
             if save_figs:
@@ -1507,9 +1506,9 @@ if compute_energy == True:
         p_comp_norm_L2.append(np.sqrt(p_comp_l2norm))
         E_comp_norm_L2.append(np.sqrt(E_comp_l2norm))
         H_comp_norm_L2.append(np.sqrt(H_comp_l2norm))
-        L2_energy.append(p_l2norm + E_l2norm + H_l2norm)
-        comp_L2_energy.append(p_comp_l2norm + E_comp_l2norm + H_comp_l2norm)
-                 
+        L2_energy.append(p_l2norm + epsilon*E_l2norm + mu*H_l2norm)
+        comp_L2_energy.append(p_comp_l2norm + epsilon*E_comp_l2norm + mu*H_comp_l2norm)
+
 p_error_L2 = np.array(p_error_L2); E_error_L2 = np.array(E_error_L2); H_error_L2 = np.array(H_error_L2)
 p_norm_L2 = np.array(p_norm_L2); E_norm_L2 = np.array(E_norm_L2); H_norm_L2 = np.array(H_norm_L2)
 p_comp_norm_L2 = np.array(p_comp_norm_L2); E_comp_norm_L2 = np.array(E_comp_norm_L2); H_comp_norm_L2 = np.array(H_comp_norm_L2)
