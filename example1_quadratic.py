@@ -1449,10 +1449,10 @@ if plot_solutions == True:
                 cbar.formatter.set_scientific(True)
                 cbar.formatter.set_useMathText(True)
             ax.set_aspect('equal'); ax.axis('off')
-            ax.set_title("\nComputed $H$ at $t=$%1.4f"%plot_time, fontsize = 20)
+            ax.set_title("\nComputed $H$ at $t=$%1.4f"%plot_time_H, fontsize = 20)
             if save_figs:
                 plt.savefig(pth.join(figs_dir, "H_computed_" + fe_order + "_" + 
-                                        "t%1.4f"%plot_time + "_" + str(mesh_no) + ".pdf"), **savefig_options)
+                                        "t%1.4f"%plot_time_H + "_" + str(mesh_no) + ".pdf"), **savefig_options)
 
             # Plot the projection of the analytical density field H on the mesh
             plt.figure(); fig = plt.gcf(); ax = plt.gca()
