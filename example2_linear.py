@@ -557,7 +557,7 @@ rows22 = []; columns22 = []; M22_data = []
 p_0 = np.zeros(N0); E_0 = np.zeros(N1); H_0 = np.zeros(N2)
 
 # Obtain the mass and stiffness matrices on each tetrahedron and integrate into the global ones
-print("\tbuilding right hand side and initial condition vectors..."); sys.stdout.flush()
+print("\tbuilding stiffness and mass matrix..."); sys.stdout.flush()
 for Tet_index, Tet in enumerate(tqdm.tqdm(sc[3].simplices)):
     vertices_Tet = sc.vertices[Tet]
     vol_phy_tet = sc[3].primal_volume[Tet_index]
