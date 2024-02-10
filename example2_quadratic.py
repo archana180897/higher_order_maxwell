@@ -1,3 +1,8 @@
+# Code for Example 2 of our paper at https://arxiv.org/abs/2310.20310.
+# This code is for the Quadratic finite element spatial discretization of
+# this problem with Backward Euler, Crank-Nicholson and implicit leapfrog
+# time discretizations.
+
 import numpy as np
 import pydec as pydec
 import scipy.sparse as sprs
@@ -35,7 +40,7 @@ mesh_no = 1
 
 # FE Space Choice
 fe_order = "Quadratic"
-p_string = "p_zero_new_pi"
+p_string = "example2"
 
 # Computation Choices
 plot_solutions = True
@@ -43,7 +48,11 @@ compute_energy = True
 save_data = True
 save_figs = True
 
-# Time Discretization Methods (Default is Crank Nicholson if 0, 1, or 2 not specified)
+# Time Discretization Methods (Default is Crank Nicholson if 0, 1, or 2 not
+# specified)
+# 0: Backward Euler
+# 1: Crank-Nicholson
+# 2: Implicit Leapfrog
 time_discretization_to_use = 2    # Specify 0, 1, 2
 
 if time_discretization_to_use == 0:
@@ -64,12 +73,13 @@ else:
     method_string = "cn"
 
 # Data and Figures
-data_dir = "./../../Python_Code/data/electromagnetics/maxwells_equations/3d/" + method_string + "/" + p_string
-figs_dir = "./../../Python_Code/figures/electromagnetics/maxwells_equations/3d/" + method_string + "/" + p_string
+data_dir = "data/3d/" + p_string + "_" method_string + "_"
+figs_dir = "figs/3d/" + p_string + "_" method_string + "_"
 savefig_options = {"bbox_inches": 'tight'}
 
 # Visualization choices
-camera_view = {"azimuth": 45.0, "elevation": 54.735, "distance": 3.25, "focalpoint": np.array([0.5, 0.5, 0.5])} 
+camera_view = {"azimuth": 45.0, "elevation": 54.735, "distance": 3.25,
+                   "focalpoint": np.array([0.5, 0.5, 0.5])} 
 
 # Analytical Solutions and Right Hand Side
 # Analytical p
@@ -84,9 +94,9 @@ def E_analytical(v, t):
     x = v[0]
     y = v[1]
     z = v[2]
-    return np.array([np.sin(np.pi*y)*np.sin(np.pi*z)*np.cos(np.pi*t), 
-                     np.sin(np.pi*x)*np.sin(np.pi*z)*np.cos(np.pi*t),
-                     np.sin(np.pi*x)*np.sin(np.pi*y)*np.cos(np.pi*t)])
+    return np.array([np.sin(np.pi*y) * np.sin(np.pi*z) * np.cos(np.pi*t), 
+                     np.sin(np.pi*x) * np.sin(np.pi*z) * np.cos(np.pi*t),
+                     np.sin(np.pi*x) * np.sin(np.pi*y) * np.cos(np.pi*t)])
 
 
 # Analytical H
@@ -94,9 +104,9 @@ def H_analytical(v, t):
     x = v[0]
     y = v[1]
     z = v[2]
-    return np.array([np.sin(np.pi*x)*(np.cos(np.pi*z) - np.cos(np.pi*y))*np.sin(np.pi*t),
-                     np.sin(np.pi*y)*(np.cos(np.pi*x) - np.cos(np.pi*z))*np.sin(np.pi*t),
-                     np.sin(np.pi*z)*(np.cos(np.pi*y) - np.cos(np.pi*x))*np.sin(np.pi*t)])
+    return np.array([np.sin(np.pi*x) * (np.cos(np.pi*z) - np.cos(np.pi*y)) * np.sin(np.pi*t),
+                     np.sin(np.pi*y) * (np.cos(np.pi*x) - np.cos(np.pi*z)) * np.sin(np.pi*t),
+                     np.sin(np.pi*z) * (np.cos(np.pi*y) - np.cos(np.pi*x)) * np.sin(np.pi*t)])
     
 # Analytical f_p
 def fp_analytical(v, t):
@@ -141,20 +151,23 @@ computation_times = np.arange(0, number_of_time_steps) * dt
 if number_of_time_steps < number_of_plot_times:
     number_of_plot_times = number_of_time_steps    # For consistency
 if use_leap_frog == True:
-    plot_time_steps = np.sort(list(set(list(np.concatenate((np.arange(0, number_of_time_steps, 
-                                                                  (number_of_time_steps + 1)/(number_of_plot_times - 1), 
-                                                                  dtype=int), [number_of_time_steps - 1]))))))
+    plot_time_steps = np.sort(list(set(list(
+        np.concatenate((np.arange(0, number_of_time_steps, 
+                                      (number_of_time_steps + 1)/(number_of_plot_times - 1), 
+                                      dtype=int), [number_of_time_steps - 1]))))))
     plot_times =  np.concatenate(([0],(plot_time_steps[1:] - 0.5) * dt))
     plot_times_H = plot_time_steps * dt
 else:
-    plot_time_steps = np.sort(list(set(list(np.concatenate((np.arange(0, number_of_time_steps, 
-                                                                  (number_of_time_steps + 1)/(number_of_plot_times - 1), 
-                                                                  dtype=int), [number_of_time_steps - 1]))))))
+    plot_time_steps = np.sort(list(set(list(
+    np.concatenate((np.arange(0, number_of_time_steps, 
+                                  (number_of_time_steps + 1)/(number_of_plot_times - 1), 
+                                  dtype=int), [number_of_time_steps - 1]))))))
     plot_times = plot_time_steps * dt
 
-solution_time_steps = np.sort(list(set(list(np.concatenate((np.arange(0, number_of_time_steps, 
-                                                                  (number_of_time_steps + 1)/(number_of_time_steps - 1), 
-                                                                  dtype=int), [number_of_time_steps - 1]))))))
+solution_time_steps = np.sort(list(set(list(
+    np.concatenate((np.arange(0, number_of_time_steps, 
+                                  (number_of_time_steps + 1)/(number_of_time_steps - 1), 
+                                  dtype=int), [number_of_time_steps - 1]))))))
 solution_times = solution_time_steps * dt
 
 
@@ -535,10 +548,10 @@ def H_interpolation(H_Tet, ell_interp, dl_Tet):
 # on the specified problem domain, and for computation of the L2 errors of the solution in 
 # comparison with the analytical solutions
 
-# Lists to store errors, energies and mesh parameter
-p_error_L2 =[]; E_error_L2 =[]; H_error_L2 =[]
-p_norm_L2= []; E_norm_L2= []; H_norm_L2=[]
-p_comp_norm_L2= []; E_comp_norm_L2= []; H_comp_norm_L2=[]
+# Lists to store errors and energies
+p_error_L2 = []; E_error_L2 = []; H_error_L2 = []
+p_norm_L2 = []; E_norm_L2 = []; H_norm_L2 = []
+p_comp_norm_L2 = []; E_comp_norm_L2 = []; H_comp_norm_L2 = []
 L2_energy = []; comp_L2_energy = []
 
 # Set up the mixed finite element discretization on the problem domain
@@ -2472,5 +2485,6 @@ if save_data:
                E, fmt="%1.16e")
     np.savetxt(pth.join(data_dir , "H_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                H, fmt="%1.16e")
+
 
 

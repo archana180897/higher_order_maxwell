@@ -1,3 +1,8 @@
+# Code for Example 1 of our paper at https://arxiv.org/abs/2310.20310.
+# This code is for the Quadratic finite element spatial discretization of
+# this problem with Backward Euler, Crank-Nicholson and implicit leapfrog
+# time discretizations.
+
 import numpy as np
 import pydec as pydec
 import scipy.sparse as sprs
@@ -35,7 +40,7 @@ mesh_no = 1
 
 # FE Space Choice
 fe_order = "Quadratic"
-p_string = "p_zero_new_pi"
+p_string = "example1"
 
 # Computation Choices
 plot_solutions = True
@@ -44,6 +49,9 @@ save_data = True
 save_figs = True
 
 # Time Discretization Methods (Default is Crank Nicholson if 0, 1, or 2 not specified)
+# 0: Backward Euler
+# 1: Crank-Nicholson
+# 2: Implicit Leapfrog
 time_discretization_to_use = 2    # Specify 0, 1, 2
 
 if time_discretization_to_use == 0:
@@ -64,12 +72,13 @@ else:
     method_string = "cn"
 
 # Data and Figures
-data_dir = "./../../Python_Code/data/electromagnetics/maxwells_equations/2d/" + method_string + "/" + p_string
-figs_dir = "./../../Python_Code/figures/electromagnetics/maxwells_equations/2d/" + method_string + "/" + p_string
+data_dir = "data/2d/" + p_string + "_" method_string + "_"
+figs_dir = "figs/2d/" + p_string + "_" method_string + "_"
 savefig_options = {"bbox_inches": 'tight'}
 
 # Visualization choices
-camera_view = {"azimuth": 45.0, "elevation": 54.735, "distance": 3.25, "focalpoint": np.array([0.5, 0.5, 0.5])} 
+camera_view = {"azimuth": 45.0, "elevation": 54.735, "distance": 3.25,
+                   "focalpoint": np.array([0.5, 0.5, 0.5])} 
 
 # Analytical Solutions and Right Hand Side
 # Analytical p
@@ -82,13 +91,14 @@ def p_analytical(v, t):
 def E_analytical(v, t):
     x = v[0]
     y = v[1]
-    return np.array([np.sin(np.pi*y)*np.cos(np.pi*t), np.sin(np.pi*x)*np.cos(np.pi*t)])
+    return np.array([np.sin(np.pi*y) * np.cos(np.pi*t),
+                         np.sin(np.pi*x) * np.cos(np.pi*t)])
 
 # Analytical H
 def H_analytical(v, t):
     x = v[0]
     y = v[1]
-    return (np.cos(np.pi*y) - np.cos(np.pi*x))*np.sin(np.pi*t)
+    return (np.cos(np.pi*y) - np.cos(np.pi*x)) * np.sin(np.pi*t)
 
 # Analytical f_p
 def fp_analytical(v, t):
@@ -108,11 +118,13 @@ def fH_analytical(v, t):
     y = v[1]
     return 0
 
-# Cross product of the Analytical vector field E with the outward normal to each of the boundary faces
+# Cross product of the Analytical vector field E with the outward normal to
+# each of the boundary faces
 def E_boundary(v, t, normal):
     return np.cross(E_analytical(v, t), normal)
 
-# Dot product of the Analytical vector field H with the outward normal to each of the boundary faces
+# Dot product of the Analytical vector field H with the outward normal to each
+# of the boundary faces
 def H_boundary(v, t, normal):
     return np.dot(H_analytical(v, t), normal)
 
@@ -126,20 +138,23 @@ computation_times = np.arange(0, number_of_time_steps) * dt
 if number_of_time_steps < number_of_plot_times:
     number_of_plot_times = number_of_time_steps    # For consistency
 if use_leap_frog == True:
-    plot_time_steps = np.sort(list(set(list(np.concatenate((np.arange(0, number_of_time_steps, 
-                                                                  (number_of_time_steps + 1)/(number_of_plot_times - 1), 
-                                                                  dtype=int), [number_of_time_steps - 1]))))))
+    plot_time_steps = np.sort(list(set(list(
+        np.concatenate((np.arange(0, number_of_time_steps, 
+                                      (number_of_time_steps + 1)/(number_of_plot_times - 1), 
+                                      dtype=int), [number_of_time_steps - 1]))))))
     plot_times =  np.concatenate(([0],(plot_time_steps[1:] - 0.5) * dt))
     plot_times_H = plot_time_steps * dt
 else:
-    plot_time_steps = np.sort(list(set(list(np.concatenate((np.arange(0, number_of_time_steps, 
-                                                                  (number_of_time_steps + 1)/(number_of_plot_times - 1), 
-                                                                  dtype=int), [number_of_time_steps - 1]))))))
+    plot_time_steps = np.sort(list(set(list(
+        np.concatenate((np.arange(0, number_of_time_steps, 
+                                      (number_of_time_steps + 1)/(number_of_plot_times - 1), 
+                                      dtype=int), [number_of_time_steps - 1]))))))
     plot_times = plot_time_steps * dt
 
-solution_time_steps = np.sort(list(set(list(np.concatenate((np.arange(0, number_of_time_steps, 
-                                                                  (number_of_time_steps + 1)/(number_of_time_steps - 1), 
-                                                                  dtype=int), [number_of_time_steps - 1]))))))
+solution_time_steps = np.sort(list(set(list(
+    np.concatenate((np.arange(0, number_of_time_steps, 
+                                  (number_of_time_steps + 1)/(number_of_time_steps - 1), 
+                                  dtype=int), [number_of_time_steps - 1]))))))
 solution_times = solution_time_steps * dt
 
 
@@ -379,17 +394,17 @@ def H_interpolation(H_T, ell_interp, vol_T):
 # on the specified problem domain, and for computation of the L2 errors of the solution in 
 # comparison with the analytical solutions
 
-# Lists to store errors, energies and mesh parameter
-p_error_L2 =[]; E_error_L2 =[]; H_error_L2 =[]
-p_norm_L2= []; E_norm_L2= []; H_norm_L2=[]
-p_comp_norm_L2= []; E_comp_norm_L2= []; H_comp_norm_L2=[]
+# Lists to store errors and energies
+p_error_L2 = []; E_error_L2 = []; H_error_L2 = []
+p_norm_L2 = []; E_norm_L2 = []; H_norm_L2 = []
+p_comp_norm_L2 = []; E_comp_norm_L2 = []; H_comp_norm_L2 = []
 L2_energy = []; comp_L2_energy = []
 
 # Set up the mixed finite element discretization on the problem domain
 Vertices = np.loadtxt(pth.join(mesh_dir, "vertices" + str(mesh_no) + ".txt"))
 Triangles = np.loadtxt(pth.join(mesh_dir, "triangles" + str(mesh_no) + ".txt"), dtype=int)
 
-sc = pydec.simplicial_complex(Vertices,Triangles)
+sc = pydec.simplicial_complex(Vertices, Triangles)
 Vertices = Vertices[sc[0].simplices.ravel()]
 
 # A preprocessing to remove any potentially duplicate vertices in the mesh provided by a
@@ -685,7 +700,6 @@ H = np.zeros((number_of_time_steps, 3*N2))
 H_true = np.zeros((number_of_time_steps, 3*N2))
 
 # Computing Initial Vectors
-
 # Initial p
 for i, v in enumerate(sc.vertices):
     p_0[i] = p_analytical(v, t=0)
@@ -696,7 +710,6 @@ for i, e in enumerate(sc[1].simplices):
 p[0] = p_0
  
 # Initial E and H
-
 # Setup boundary conditions for computation of initial E
 M11_g_bndry = M11_g.copy()
 for i in range(2):
@@ -1458,10 +1471,10 @@ if plot_solutions == True:
                 cbar.formatter.set_scientific(True)
                 cbar.formatter.set_useMathText(True)
             ax.set_aspect('equal'); ax.axis('off')
-            ax.set_title("\nAnalytical $H$ at $t=$%1.4f"%plot_time, fontsize = 20)
+            ax.set_title("\nAnalytical $H$ at $t=$%1.4f"%plot_time_H, fontsize = 20)
             if save_figs:
                 plt.savefig(pth.join(figs_dir, "H_analytical_" +
-                                        "t%1.4f"%plot_time + "_" + str(mesh_no) + ".pdf"), **savefig_options)
+                                        "t%1.4f"%plot_time_H + "_" + str(mesh_no) + ".pdf"), **savefig_options)
                 
     else:
         for pts_index, plot_time_step in enumerate(plot_time_steps):
@@ -1478,7 +1491,6 @@ if plot_solutions == True:
             p_plot_time = p[plot_time_steps[pts_index]]
             E_plot_time = E[plot_time_steps[pts_index]]
             H_plot_time = H[plot_time_steps[pts_index]]
-            # H_T = np.zeros(N2); H_true_T = np.zeros(N2)
             H_true_T = H_true[plot_time_step]
             H_true_comp = np.zeros(N2)
 
@@ -1662,10 +1674,10 @@ if plot_solutions == True:
                 cbar.formatter.set_scientific(True)
                 cbar.formatter.set_useMathText(True)
             ax.set_aspect('equal'); ax.axis('off')
-            ax.set_title("\nComputed $H$ at $t=$%1.4f"%plot_time_H, fontsize = 20)
+            ax.set_title("\nComputed $H$ at $t=$%1.4f"%plot_time, fontsize = 20)
             if save_figs:
                 plt.savefig(pth.join(figs_dir, "H_computed_" + fe_order + "_" + 
-                                        "t%1.4f"%plot_time_H + "_" + str(mesh_no) + ".pdf"), **savefig_options)
+                                        "t%1.4f"%plot_time + "_" + str(mesh_no) + ".pdf"), **savefig_options)
 
             # Plot the projection of the analytical density field H on the mesh
             plt.figure(); fig = plt.gcf(); ax = plt.gca()
@@ -1684,10 +1696,10 @@ if plot_solutions == True:
                 cbar.formatter.set_scientific(True)
                 cbar.formatter.set_useMathText(True)
             ax.set_aspect('equal'); ax.axis('off')
-            ax.set_title("\nAnalytical $H$ at $t=$%1.4f"%plot_time_H, fontsize = 20)
+            ax.set_title("\nAnalytical $H$ at $t=$%1.4f"%plot_time, fontsize = 20)
             if save_figs:
                 plt.savefig(pth.join(figs_dir, "H_analytical_" +
-                                        "t%1.4f"%plot_time_H + "_" + str(mesh_no) + ".pdf"), **savefig_options)
+                                        "t%1.4f"%plot_time + "_" + str(mesh_no) + ".pdf"), **savefig_options)
             
 
 if compute_energy == True:
@@ -1792,7 +1804,6 @@ p_comp_norm_L2 = np.array(p_comp_norm_L2); E_comp_norm_L2 = np.array(E_comp_norm
 L2_energy = np.array(L2_energy); comp_L2_energy = np.array(comp_L2_energy) 
 
 # Print errors and parameters
-# print("Mesh parmeter h: ", mesh_parameter)
 print("\nL2 norm of analytical scalar field p: ", p_norm_L2)
 print("L2 norm of computed scalar field p: ", p_comp_norm_L2)
 print("L2 error in scalar field E: ", p_error_L2)
@@ -1843,3 +1854,7 @@ if save_data:
                E, fmt="%1.16e")
     np.savetxt(pth.join(data_dir , "H_computed_" + fe_order + "_" + str(mesh_no) + ".txt"), 
                H, fmt="%1.16e")
+
+
+
+
