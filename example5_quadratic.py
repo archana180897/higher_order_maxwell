@@ -1,4 +1,4 @@
-# Code for Example 1 of our paper at https://arxiv.org/abs/2310.20310.
+# Code for Example 5 of our paper at https://arxiv.org/abs/2310.20310.
 # This code is for the Quadratic finite element spatial discretization of
 # this problem with Backward Euler, Crank-Nicholson and implicit leapfrog
 # time discretizations.
