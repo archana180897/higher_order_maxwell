@@ -898,8 +898,8 @@ if use_leap_frog:
     E0_bottom_boundary = normal_boundary_trace(E_analytical, boundary_bottom_edges, np.array([0, -1]), 0)
     
     # Compute right hand side at this time step
-    b0_RHS = np.concatenate((b0_p, b0_E, b0_H)) + sprs.bmat([[2/dt*M00_g, 1/2*S01_g, None], 
-                                                         [-1/2*S01_g.T, 2/dt*epsilon*M11_g, 1/2*S12_g],
+    b0_RHS = np.concatenate((b0_p, b0_E, b0_H)) + sprs.bmat([[2/dt*M00_g, epsilon/4*S01_g, None], 
+                                                         [-1/4*S01_g.T, 2/dt*epsilon*M11_g, 1/2*S12_g],
                                                          [None, -1/4*S12_g.T, 1/dt*mu*M22_g]], 
                                                          format='csr') * np.concatenate((p[0], E[0], H[0]))
 
@@ -910,8 +910,8 @@ if use_leap_frog:
     b0_RHS[N0 + boundary_top_edges] = E0_top_boundary
     b0_RHS[N0 + boundary_bottom_edges] = E0_bottom_boundary
 
-    S0_LHS = sprs.bmat([[2/dt*M00_g, -epsilon/2*S01_g, None],
-                        [-1/2*S01_g.T, 2/dt*epsilon*M11_g, -1/2*S12_g],
+    S0_LHS = sprs.bmat([[2/dt*M00_g, -epsilon/4*S01_g, None],
+                        [-1/4*S01_g.T, 2/dt*epsilon*M11_g, -1/2*S12_g],
                         [None, 1/4*S12_g.T, mu/dt*M22_g]], format='csr')
 
     # Modify this system matrix to account for boundary conditions

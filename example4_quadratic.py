@@ -1812,8 +1812,8 @@ if use_leap_frog:
     H0_bc *= Hbasis_trace_factor
 
     # Compute right hand side at this time step
-    b0_RHS = np.concatenate((b0_p, b0_E, b0_H)) + sprs.bmat([[2/dt*M00_g, 1/2*S01_g, None], 
-                                                         [-1/2*S01_g.T, 2/dt*epsilon*M11_g, 1/2*S12_g],
+    b0_RHS = np.concatenate((b0_p, b0_E, b0_H)) + sprs.bmat([[2/dt*M00_g, epsilon/4*S01_g, None], 
+                                                         [-1/4*S01_g.T, 2/dt*epsilon*M11_g, 1/2*S12_g],
                                                          [None, -1/4*S12_g.T, 1/dt*mu*M22_g]], 
                                                          format='csr') * np.concatenate((p[0], E[0], H[0]))
 
@@ -1829,8 +1829,8 @@ if use_leap_frog:
     for i in range(3):
         b0_RHS[N0 + N1 + 2*N1 + 2*N2 + 3*boundary_face_indices + i] = H0_bc
 
-    S0_LHS = sprs.bmat([[2/dt*M00_g, -epsilon/2*S01_g, None],
-                        [-1/2*S01_g.T, 2/dt*epsilon*M11_g, -1/2*S12_g],
+    S0_LHS = sprs.bmat([[2/dt*M00_g, -epsilon/4*S01_g, None],
+                        [-1/4*S01_g.T, 2/dt*epsilon*M11_g, -1/2*S12_g],
                         [None, 1/4*S12_g.T, mu/dt*M22_g]], format='csr')
 
     # Modify this system matrix to account for boundary conditions
