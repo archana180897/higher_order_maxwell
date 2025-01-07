@@ -1563,8 +1563,8 @@ if use_crank_nicholson:
                 b_E[2*N1+2*faces_Tet+j] += fE_integral[12+j::2]
 
             for j in range(3):
-                b_E[3*faces_Tet+j] += fH_integral[j:12:3]
-                b_E[3*N2+Tet_index+j] += fH_integral[12+j::3]
+                b_H[3*faces_Tet+j] += fH_integral[j:12:3]
+                b_H[3*N2+Tet_index+j] += fH_integral[12+j::3]
                 
         # Setup right hand side intermediate variables
         bp_RHS = b_p/2 + 1/dt*M00_g*p[time_step - 1] + epsilon*S01_g/2*E[time_step - 1]
