@@ -1,5 +1,6 @@
 # Description
-This is the public repository for Python code accompanying our paper titled "Energy Conserving Higher Order Mixed Finite Element Discretizations of Maxwell's Equations" which can be found at https://arxiv.org/abs/2310.20310/.
+This is the public repository for Python code accompanying our paper titled "Energy Conserving and Second Order Time Implicit Mixed
+Finite Element Discretizations of Maxwell’s Equations" which can be found at https://doi.org/10.1007/s10915-025-03032-7 and also at https://arxiv.org/abs/2310.20310/.
 
 # Library Dependencies
 1. Scientific Python Stack: [NumPy](https://numpy.org/), [SciPy](https://scipy.org/), [Matplotlib](https://matplotlib.org/)
